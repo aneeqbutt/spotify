@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    network_security_config.xml
+
+    Allows cleartext (plain HTTP/WS) traffic to our local development backend.
+    Only applies to the specific IP — all other traffic remains TLS-only.
+
+    In production this would be replaced with HTTPS (wss://) and this file removed.
+-->
+<network-security-config>
+    <!--
+        Allow cleartext HTTP/WS to any local IP.
+        The backend IP changes whenever the router reassigns DHCP — hardcoding
+        a single IP here would break every time. For this dev APK, allowing
+        all cleartext is acceptable; production would use wss:// instead.
+    -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

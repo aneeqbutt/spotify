@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">SpotifyBot</string>
+    <string name="accessibility_service_description">SpotifyBot Accessibility Service — controls Spotify UI for automation tasks</string>
+    <string name="service_running">Accessibility Service is RUNNING</string>
+    <string name="service_stopped">Accessibility Service is STOPPED\nGo to Settings → Accessibility → SpotifyBot to enable it</string>
+    <string name="btn_launch_spotify">Launch Spotify</string>
+    <string name="btn_open_accessibility">Open Accessibility Settings</string>
+</resources>

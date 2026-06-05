@@ -1,0 +1,50 @@
+# Python
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+*.pyc
+*.pyo
+*.pyd
+
+# Database — never commit live data
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+
+# Environment secrets
+backend/.env
+.env
+*.env
+
+# Node / frontend build
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Android build artifacts
+apk/.gradle/
+apk/app/build/
+apk/build/
+apk/local.properties
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Agents / skills (local tooling, not project code)
+.agents/
+
+# Claude Code internals
+.claude/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+daily-standups/
+daily-reports/
