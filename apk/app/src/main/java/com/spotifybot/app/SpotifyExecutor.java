@@ -5,7 +5,13 @@ import android.graphics.Rect;
 import android.accessibilityservice.GestureDescription;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
+import android.os.Looper;
+import android.os.PowerManager;
+import android.content.Context;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 import android.util.Log;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityWindowInfo;
@@ -38,15 +44,54 @@ public abstract class SpotifyExecutor {
     protected static final String TAG             = "SpotifyBot";
     protected static final String SPOTIFY_PACKAGE = "com.spotify.music";
 
+    /** True while any executor step chain is in-flight — WS reconnect must defer. */
+    private static final AtomicBoolean commandInProgress = new AtomicBoolean(false);
+
+    /** The executor currently running. Set in execute(), cleared in releaseCommandLock(). */
+    static volatile SpotifyExecutor currentExecutor;
+
+    public static boolean isCommandInProgress() {
+        return commandInProgress.get();
+    }
+
     /** Default step timeout — 15 seconds */
     protected static final long STEP_TIMEOUT_MS = 15_000;
+
+    /** Minimal UI-settle gaps between steps (gestures are async — these are read buffers only). */
+    protected static final long GAP_TINY   = 250;
+    /** After typing — brief pause before keyboard Search key. */
+    protected static final long GAP_KEYBOARD_SEARCH = 100;
+    /** Pause after query is typed before IME Enter + keyboard Search are tapped. */
+    protected static final long GAP_BEFORE_SEARCH_SUBMIT = 700;
+    /** Pause after category filter (Albums, Playlists, etc.) before tapping a result row. */
+    protected static final long GAP_BEFORE_CATEGORY_TAP   = 700;
+    protected static final long GAP_SHORT  = 450;
+    protected static final long GAP_MEDIUM = 600;
+    protected static final long GAP_LONG   = 850;
+
+    /** Poll interval while waiting for album/playlist page play button */
+    private static final long COLLECTION_PLAY_POLL_MS  = 350;
+    /** Max wait for collection play button — 40 × 250ms = 10s */
+    private static final int  COLLECTION_PLAY_MAX_POLLS = 40;
+
+    /** Dedicated thread for step timers — immune to main-looper floods from accessibility events */
+    private static final HandlerThread STEP_THREAD;
+    private static final Handler         stepHandler;
+    protected static final Handler       mainHandler = new Handler(Looper.getMainLooper());
+
+    static {
+        STEP_THREAD = new HandlerThread("SpotifyExecutorSteps");
+        STEP_THREAD.start();
+        stepHandler = new Handler(STEP_THREAD.getLooper());
+    }
 
     /** How often to re-check while waiting for an ad/overlay to clear */
     private static final long AD_POLL_INTERVAL_MS = 3_000;
     /** Max polls before giving up — 20 × 3s = 60 seconds */
     private static final int  AD_MAX_POLLS        = 20;
 
-    protected final Handler           handler = new Handler(Looper.getMainLooper());
+    /** Legacy alias — prefer {@link #scheduleStep(Runnable, long)} for delayed steps */
+    protected final Handler           handler = mainHandler;
     protected       BotWebSocketClient ws;
     protected       String            runId;
     protected       String            commandId;
@@ -54,13 +99,17 @@ public abstract class SpotifyExecutor {
     // ── Timeout watchdog ──────────────────────────────────────────────────────
 
     /** Currently armed timeout runnable — null when no step is in-flight */
-    private Runnable pendingTimeout = null;
+    private Runnable pendingTimeout      = null;
+    /** Timer wrapper on stepHandler — needed so cancelStepTimeout() can remove it */
+    private Runnable pendingTimeoutTimer = null;
 
     /**
      * Set to true when the watchdog fires. Prevents a slow-completing step from
      * calling stepOk() + commandDone() AFTER the watchdog already sent STEP_FAILED.
      */
     protected volatile boolean timeoutFired = false;
+    /** Set by cancel() — prevents double-cancel and guards the COMMAND_DONE logic. */
+    private   volatile boolean cancelled    = false;
 
     /**
      * Arm a per-step watchdog.
@@ -83,7 +132,8 @@ public abstract class SpotifyExecutor {
             stepFailed(stepId, "STEP_TIMEOUT");
             commandDone(false);
         };
-        handler.postDelayed(pendingTimeout, timeoutMs);
+        pendingTimeoutTimer = () -> mainHandler.post(pendingTimeout);
+        stepHandler.postDelayed(pendingTimeoutTimer, timeoutMs);
         Log.d(TAG, "[EXEC] Watchdog armed: step=" + stepId + " timeout=" + timeoutMs + "ms");
     }
 
@@ -95,14 +145,33 @@ public abstract class SpotifyExecutor {
      * Safe to call even if no watchdog is armed.
      */
     protected void cancelStepTimeout() {
-        if (pendingTimeout != null) {
-            handler.removeCallbacks(pendingTimeout);
+        if (pendingTimeoutTimer != null) {
+            stepHandler.removeCallbacks(pendingTimeoutTimer);
+            pendingTimeoutTimer = null;
             pendingTimeout = null;
             Log.d(TAG, "[EXEC] Watchdog cancelled");
         }
     }
 
+    /**
+     * Schedule a step on the main thread after {@code delayMs}.
+     * The delay timer runs on a dedicated thread so accessibility-event floods on the
+     * main looper cannot stall executor steps (e.g. playlist-page → Play button).
+     */
+    protected void scheduleStep(Runnable step, long delayMs) {
+        if (delayMs <= 0) {
+            mainHandler.post(step);
+        } else {
+            stepHandler.postDelayed(() -> mainHandler.post(step), delayMs);
+        }
+    }
+
     // ── Entry point ───────────────────────────────────────────────────────────
+
+    /** Poll interval while waiting for accessibility service to bind. */
+    private static final long ACC_BIND_POLL_MS   = 500;
+    /** Max wait — 30 × 500ms = 15s (WS may be down during zombie recovery). */
+    private static final int  ACC_BIND_MAX_POLLS  = 30;
 
     /**
      * Entry point — called by CommandRouter.
@@ -114,19 +183,43 @@ public abstract class SpotifyExecutor {
         this.commandId = commandId;
         this.ws        = ws;
         timeoutFired   = false;
+        cancelled      = false;
+        currentExecutor = this;
+        commandInProgress.set(true);
+        stopPlaybackMonitor();
+        SpotifyAccessibilityService.disableFirstClickDemo();
 
-        // Fail fast if the accessibility service is not running.
-        // This gives a clear ACCESSIBILITY_SERVICE_NOT_RUNNING reason code instead of
-        // UI_ELEMENT_NOT_FOUND on every step (which happens when Samsung's battery
-        // manager has killed the accessibility service in the background).
         if (SpotifyAccessibilityService.instance == null) {
-            Log.e(TAG, "[EXEC] Accessibility service not running — failing command immediately");
+            Log.w(TAG, "[EXEC] Accessibility not bound — waiting up to "
+                    + (ACC_BIND_MAX_POLLS * ACC_BIND_POLL_MS / 1000) + "s");
+            scheduleStep(() -> waitForAccessibilityBind(params, 0), ACC_BIND_POLL_MS);
+            return;
+        }
+
+        doExecute(params);
+    }
+
+    /** Poll until SpotifyAccessibilityService.instance is set, then run the command. */
+    private void waitForAccessibilityBind(JsonObject params, int poll) {
+        if (timeoutFired) return;
+
+        if (SpotifyAccessibilityService.instance != null) {
+            Log.i(TAG, "[EXEC] Accessibility bound after "
+                    + (poll * ACC_BIND_POLL_MS) + "ms — starting command");
+            doExecute(params);
+            return;
+        }
+
+        if (poll >= ACC_BIND_MAX_POLLS) {
+            Log.e(TAG, "[EXEC] Accessibility not bound after "
+                    + (poll * ACC_BIND_POLL_MS) + "ms — failing command");
+            BotForegroundService.handleAccessibilityDead();
             stepFailed("pre_check", "ACCESSIBILITY_SERVICE_NOT_RUNNING");
             commandDone(false);
             return;
         }
 
-        doExecute(params);
+        scheduleStep(() -> waitForAccessibilityBind(params, poll + 1), ACC_BIND_POLL_MS);
     }
 
     /** Subclasses implement their step chain here */
@@ -179,24 +272,139 @@ public abstract class SpotifyExecutor {
      *                          └─ 400ms ─→ firstStep.run()
      */
     protected void launchAndSettle(Runnable firstStep) {
-        launchSpotify();
-        handler.postDelayed(() -> {
+        boolean alreadyForeground = isSpotifyInForeground();
+        Log.i(TAG, "[EXEC] launchAndSettle — spotifyForeground=" + alreadyForeground);
+
+        Runnable startFirstStep = () -> {
+            SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
+            if (OverlayGuard.isAdOrOverlayBlocking(svc)) {
+                dismissOverlays();
+            }
+            if (OverlayGuard.isAudioAdPlaying(svc)) {
+                Log.i(TAG, "[EXEC] Audio ad playing — waiting before starting command");
+                waitForAudioAdToFinish(firstStep);
+                return;
+            }
+            Log.i(TAG, "[EXEC] launchAndSettle complete — starting first step");
+            firstStep.run();
+        };
+
+        if (alreadyForeground) {
             dismissOverlays();
-            handler.postDelayed(() -> {
-                SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
-                if (OverlayGuard.isAdOrOverlayBlocking(svc)) {
-                    // Full-screen blocking overlay (video ad, premium upsell) — FAIL if timeout
-                    Log.w(TAG, "[EXEC] Blocking ad/overlay at launch — entering ad wait");
-                    waitForAdToClear(firstStep, "pre_launch_ad");
-                } else if (OverlayGuard.isAudioAdPlaying(svc)) {
-                    // Audio ad in mini-player — wait it out then PROCEED (never fail for this)
-                    Log.i(TAG, "[EXEC] Audio ad playing — waiting before starting command");
-                    waitForAudioAdToFinish(firstStep);
-                } else {
-                    firstStep.run();
+            scheduleStep(startFirstStep, GAP_TINY);
+            return;
+        }
+
+        ensureScreenOn();
+        launchSpotify();
+        // Cold start (screen was off / Spotify not foreground) — UI needs longer to render
+        scheduleStep(() -> {
+            dismissOverlays();
+            scheduleStep(startFirstStep, GAP_MEDIUM);
+        }, jitteredDelay(1_500));
+    }
+
+    /** Wake the screen if it is off so accessibility can read Spotify's UI tree. */
+    protected void ensureScreenOn() {
+        SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
+        if (svc == null) return;
+        PowerManager pm = (PowerManager) svc.getSystemService(Context.POWER_SERVICE);
+        if (pm == null || pm.isInteractive()) return;
+        Log.i(TAG, "[EXEC] Screen off — waking for automation");
+        try {
+            @SuppressWarnings("deprecation")
+            PowerManager.WakeLock wl = pm.newWakeLock(
+                    PowerManager.SCREEN_BRIGHT_WAKE_LOCK
+                            | PowerManager.ACQUIRE_CAUSES_WAKEUP
+                            | PowerManager.ON_AFTER_RELEASE,
+                    "SpotifyBot:ScreenOn");
+            wl.acquire(5_000);
+            wl.release();
+        } catch (Exception e) {
+            Log.w(TAG, "[EXEC] ensureScreenOn failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Type a query into the search field with up to 3 retries when the input is not found
+     * (common when Spotify is still loading after a cold start).
+     */
+    protected void runTypeQueryStep(String stepId, String stepName, String text, Runnable onDone) {
+        runTypeQueryStepAttempt(stepId, stepName, text, onDone, 0, false);
+    }
+
+    private void runTypeQueryStepAttempt(String stepId, String stepName, String text,
+                                          Runnable onDone, int attempt, boolean started) {
+        if (timeoutFired) return;
+        if (!started) {
+            stepStarted(stepId, stepName);
+            scheduleStepTimeout(stepId, STEP_TIMEOUT_MS);
+        }
+
+        AccessibilityNodeInfo input = findSearchInput();
+        if (input == null) {
+            if (attempt < 3) {
+                Log.w(TAG, "[EXEC] Search input not found — retry " + (attempt + 1) + "/3");
+                cancelStepTimeout();
+                scheduleStep(() -> activateSearchBar(
+                        () -> runTypeQueryStepAttempt(stepId, stepName, text, onDone,
+                                attempt + 1, true)), GAP_MEDIUM);
+                return;
+            }
+            cancelStepTimeout();
+            if (!timeoutFired) {
+                stepFailed(stepId, "UI_ELEMENT_NOT_FOUND");
+                commandDone(false);
+            }
+            return;
+        }
+
+        boolean typed = typeText(input, text);
+        input.recycle();
+        cancelStepTimeout();
+        if (!typed) {
+            stepFailed(stepId, "TEXT_INPUT_FAILED");
+            commandDone(false);
+            return;
+        }
+        stepOk(stepId, stepName);
+        onDone.run();
+    }
+
+    /** Reject song rows when searching for albums/playlists. */
+    protected boolean looksLikeSongTitle(CharSequence text) {
+        if (text == null) return false;
+        String t = text.toString().toLowerCase();
+        return t.contains("feat.") || t.contains("ft.") || t.contains("(live)")
+                || t.contains("remix") || t.contains(" - single");
+    }
+
+    /** True when a result row subtitle identifies it as a song. */
+    protected boolean hasSongSubtitle(AccessibilityNodeInfo parent) {
+        for (int i = 0; i < parent.getChildCount(); i++) {
+            AccessibilityNodeInfo child = parent.getChild(i);
+            if (child == null) continue;
+            CharSequence txt = child.getText();
+            child.recycle();
+            if (txt != null) {
+                String s = txt.toString();
+                if (s.startsWith("Song •") || s.startsWith("Song ·") || s.startsWith("Song•")) {
+                    return true;
                 }
-            }, 400);
-        }, jitteredDelay(2_000));
+            }
+        }
+        return false;
+    }
+
+    /** True when Spotify is already the active foreground app — skip relaunch delay. */
+    protected boolean isSpotifyInForeground() {
+        SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
+        if (svc == null) return false;
+        AccessibilityNodeInfo root = svc.getRootInActiveWindow();
+        if (root == null) return false;
+        CharSequence pkg = root.getPackageName();
+        root.recycle();
+        return pkg != null && SPOTIFY_PACKAGE.equals(pkg.toString());
     }
 
     /**
@@ -293,7 +501,7 @@ public abstract class SpotifyExecutor {
         Log.d(TAG, "[AD_WAIT] Still blocked — poll " + (poll + 1)
                 + "/" + AD_MAX_POLLS + ", retrying in "
                 + (AD_POLL_INTERVAL_MS / 1000) + "s");
-        handler.postDelayed(
+        scheduleStep(
                 () -> waitForAdPoll(onClear, failStepId, poll + 1),
                 AD_POLL_INTERVAL_MS);
     }
@@ -345,7 +553,7 @@ public abstract class SpotifyExecutor {
         Log.d(TAG, "[AUDIO_AD] Ad still playing — poll " + (poll + 1)
                 + "/" + AUDIO_AD_MAX_POLLS + ", next check in "
                 + (AUDIO_AD_POLL_MS / 1000) + "s");
-        handler.postDelayed(() -> audioAdPoll(onClear, poll + 1), AUDIO_AD_POLL_MS);
+        scheduleStep(() -> audioAdPoll(onClear, poll + 1), AUDIO_AD_POLL_MS);
     }
 
     // ── Node finding ──────────────────────────────────────────────────────────
@@ -389,6 +597,23 @@ public abstract class SpotifyExecutor {
         return null;
     }
 
+    /** Find node by resource-id across all Spotify windows (collection pages may split layers). */
+    protected AccessibilityNodeInfo findByIdAllWindows(String viewId) {
+        SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
+        if (svc == null) return null;
+        List<AccessibilityWindowInfo> windows = svc.getWindows();
+        if (windows != null) {
+            for (AccessibilityWindowInfo window : windows) {
+                AccessibilityNodeInfo root = window.getRoot();
+                if (root == null) continue;
+                List<AccessibilityNodeInfo> nodes = root.findAccessibilityNodeInfosByViewId(viewId);
+                root.recycle();
+                if (nodes != null && !nodes.isEmpty()) return nodes.get(0);
+            }
+        }
+        return findById(viewId);
+    }
+
     /** Find node by resource-id in the active window */
     protected AccessibilityNodeInfo findById(String viewId) {
         SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
@@ -399,6 +624,45 @@ public abstract class SpotifyExecutor {
         return (nodes != null && !nodes.isEmpty()) ? nodes.get(0) : null;
     }
 
+    /**
+     * Find the first editable node in the active window by BFS traversal.
+     *
+     * Used in search-related executors as a robust fallback for finding the search
+     * EditText when resource-id lookups fail (e.g. Spotify rebranded the id, or the
+     * keyboard hasn't fully transferred focus yet).
+     *
+     * An editable node (isEditable()=true) is definitionally the focused text field
+     * once the on-screen keyboard is showing — no resource-id knowledge required.
+     *
+     * Memory: follows the same no-root-recycle pattern as findById / findByText.
+     * The returned node is owned by the caller who must recycle it.
+     */
+    protected AccessibilityNodeInfo findEditableNode() {
+        SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
+        if (svc == null) return null;
+        AccessibilityNodeInfo root = svc.getRootInActiveWindow();
+        if (root == null) return null;
+        return findEditableRecursive(root);
+    }
+
+    private AccessibilityNodeInfo findEditableRecursive(AccessibilityNodeInfo node) {
+        if (node == null) return null;
+        if (node.isEditable()) return node;
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child == null) continue;
+            AccessibilityNodeInfo found = findEditableRecursive(child);
+            if (found != null) {
+                // Recycle intermediate children that are not the match and not the match's
+                // direct ancestor (consistent with findTextNodeInSubtree pattern).
+                if (found != child) child.recycle();
+                return found;
+            }
+            child.recycle();
+        }
+        return null;
+    }
+
     /** Find node by visible text (case-insensitive contains) */
     protected AccessibilityNodeInfo findByText(String text) {
         SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
@@ -407,6 +671,411 @@ public abstract class SpotifyExecutor {
         if (root == null) return null;
         List<AccessibilityNodeInfo> nodes = root.findAccessibilityNodeInfosByText(text);
         return (nodes != null && !nodes.isEmpty()) ? nodes.get(0) : null;
+    }
+
+    /**
+     * Find the bottom-nav Search tab.
+     * NEVER use bare "Search" — it matches the home-page search bar, keyboard keys, etc.
+     */
+    protected AccessibilityNodeInfo findSearchTab() {
+        AccessibilityNodeInfo tab = findById(SPOTIFY_PACKAGE + ":id/search_tab");
+        if (tab != null) return tab;
+        tab = findByDesc("Search, Tab");
+        if (tab == null) tab = findByDesc("Search tab");
+        return tab;
+    }
+
+    /**
+     * Tap the Search bottom-nav tab via gesture, with coordinate fallback.
+     * UIAutoDev S21 FE 1080×2340: bounds [216,2082][432,2214] → center (324, 2148).
+     */
+    protected boolean tapSearchTab() {
+        AccessibilityNodeInfo searchTab = findSearchTab();
+        if (searchTab != null) {
+            boolean clicked = tapAtNodeRandom(searchTab);
+            searchTab.recycle();
+            if (clicked) {
+                Log.i(TAG, "[EXEC] tapSearchTab: gesture tap on nav tab");
+                return true;
+            }
+        }
+        Log.w(TAG, "[EXEC] tapSearchTab: node not found — fallback coords (324,2148)");
+        return tapAtCoords(324, 2148);
+    }
+
+    /**
+     * Tap the search input to open the keyboard, then run onReady after a jittered delay.
+     * Shared by all search-based executors.
+     */
+    protected void activateSearchBar(Runnable onReady) {
+        activateSearchBarAttempt(onReady, 0);
+    }
+
+    private void activateSearchBarAttempt(Runnable onReady, int attempt) {
+        Log.i(TAG, "[EXEC] activateSearchBar — attempt=" + attempt + " timeoutFired=" + timeoutFired);
+        if (timeoutFired) return;
+
+        AccessibilityNodeInfo searchBar = findById(SPOTIFY_PACKAGE + ":id/query");
+        if (searchBar == null) searchBar = findById(SPOTIFY_PACKAGE + ":id/search_text_field_wrapper");
+        if (searchBar == null) searchBar = findById(SPOTIFY_PACKAGE + ":id/query_text_wrapper");
+        if (searchBar == null) searchBar = findByDesc("Search for something to listen to");
+        if (searchBar == null) searchBar = findByText("What do you want to listen to?");
+
+        if (searchBar != null) {
+            tapAtNodeRandom(searchBar);
+            searchBar.recycle();
+            Log.i(TAG, "[EXEC] Search bar tapped via gesture — waiting for keyboard");
+            scheduleStep(onReady, jitteredDelay(GAP_TINY));
+            return;
+        }
+
+        if (attempt < 4) {
+            scheduleStep(() -> activateSearchBarAttempt(onReady, attempt + 1), GAP_TINY);
+            return;
+        }
+
+        Log.w(TAG, "[EXEC] Search bar node not found — tapping fallback coords (540,165)");
+        tapAtCoords(540, 165);
+        scheduleStep(onReady, jitteredDelay(GAP_TINY));
+    }
+
+    /**
+     * Submit the current search query: focus field → IME Enter → keyboard Search key.
+     * Uses {@link #findSearchInput()} so editable-node fallbacks match the type step.
+     *
+     * @param onSubmitted step to run after submit (e.g. tap filter chip) — may be null
+     */
+    protected void submitSearchQuery(Runnable onSubmitted) {
+        if (timeoutFired) return;
+
+        scheduleStep(() -> {
+            if (timeoutFired) return;
+            AccessibilityNodeInfo input = findSearchInput();
+            if (input != null) {
+                input.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                input.performAction(0x01000000); // ACTION_IME_ENTER
+                input.recycle();
+                Log.i(TAG, "[EXEC] ACTION_IME_ENTER attempted on search field");
+            } else {
+                Log.w(TAG, "[EXEC] Search input not found for submit");
+            }
+            tapKeyboardSearchButton();
+        }, GAP_BEFORE_SEARCH_SUBMIT);
+
+        if (onSubmitted != null) {
+            scheduleStep(onSubmitted, GAP_BEFORE_SEARCH_SUBMIT + jitteredDelay(GAP_MEDIUM));
+        }
+    }
+
+    /** True when the search-results filter chip row (filter_compose) is on screen. */
+    protected boolean isFilterComposeVisible() {
+        SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
+        if (svc == null) return false;
+        AccessibilityNodeInfo root = svc.getRootInActiveWindow();
+        if (root == null) return false;
+        List<AccessibilityNodeInfo> containers = root.findAccessibilityNodeInfosByViewId(
+                SPOTIFY_PACKAGE + ":id/filter_compose");
+        root.recycle();
+        if (containers == null || containers.isEmpty()) return false;
+        for (AccessibilityNodeInfo n : containers) {
+            if (n != null) n.recycle();
+        }
+        return true;
+    }
+
+    /**
+     * Find the large Play / Shuffle button on an album or playlist collection page.
+     * Avoids broad findByDesc("Play") which false-matches search results and mini-player.
+     */
+    protected AccessibilityNodeInfo findCollectionPlayButton() {
+        String[] ids = {
+            SPOTIFY_PACKAGE + ":id/button_play_and_pause",
+            SPOTIFY_PACKAGE + ":id/play_button",
+            SPOTIFY_PACKAGE + ":id/shuffle_button",
+            SPOTIFY_PACKAGE + ":id/btn_play",
+            SPOTIFY_PACKAGE + ":id/header_play_pause_btn",
+            SPOTIFY_PACKAGE + ":id/collection_play_button",
+        };
+        for (String id : ids) {
+            AccessibilityNodeInfo btn = findByIdAllWindows(id);
+            if (btn != null) return btn;
+        }
+        AccessibilityNodeInfo btn = findByDesc("Shuffle play");
+        if (btn == null) btn = findByDesc("Shuffle Play");
+        if (btn == null) btn = findByDesc("Play album");
+        if (btn == null) btn = findByDesc("Play playlist");
+        return btn;
+    }
+
+    /**
+     * After tapping a playlist/album row, poll until the collection-page play button appears.
+     * Replaces a blind humanDelay — taps Play as soon as the page is ready.
+     */
+    protected void waitForCollectionPlayButton(Runnable onReady) {
+        waitForCollectionPlayButtonPoll(onReady, 0);
+    }
+
+    private void waitForCollectionPlayButtonPoll(Runnable onReady, int poll) {
+        if (timeoutFired) return;
+
+        AccessibilityNodeInfo btn = findCollectionPlayButton();
+        if (btn != null) {
+            btn.recycle();
+            Log.i(TAG, "[EXEC] Collection play button ready after "
+                    + (poll * COLLECTION_PLAY_POLL_MS) + "ms");
+            onReady.run();
+            return;
+        }
+
+        if (poll >= COLLECTION_PLAY_MAX_POLLS) {
+            Log.w(TAG, "[EXEC] Collection play button not found after "
+                    + (COLLECTION_PLAY_MAX_POLLS * COLLECTION_PLAY_POLL_MS)
+                    + "ms — proceeding anyway");
+            onReady.run();
+            return;
+        }
+
+        scheduleStep(() -> waitForCollectionPlayButtonPoll(onReady, poll + 1),
+                COLLECTION_PLAY_POLL_MS);
+    }
+
+    /**
+     * Find the search EditText using ID → editable-node → placeholder strategies.
+     * Caller must recycle the returned node.
+     */
+    protected AccessibilityNodeInfo findSearchInput() {
+        AccessibilityNodeInfo input = findById(SPOTIFY_PACKAGE + ":id/query");
+        if (input == null) input = findById(SPOTIFY_PACKAGE + ":id/search_edittext");
+        if (input == null) input = findById(SPOTIFY_PACKAGE + ":id/search_query");
+        if (input == null) {
+            input = findEditableNode();
+            if (input != null) Log.i(TAG, "[EXEC] findSearchInput: found via findEditableNode");
+        }
+        if (input == null) input = findByText("What do you want to listen to?");
+        return input;
+    }
+
+    /**
+     * Find the label TextView of a filter chip inside the filter_compose ComposeView.
+     *
+     * UIAutoDev confirmed: the entire chip row is ONE filter_compose container.
+     * Each chip ("Songs", "Albums", etc.) is a nested TextView — findByText("Songs")
+     * alone matches wrong nodes; we must search inside filter_compose only.
+     * Caller must recycle the returned node.
+     */
+    protected AccessibilityNodeInfo findChipLabelNode(String label) {
+        SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
+        if (svc == null) return null;
+        AccessibilityNodeInfo root = svc.getRootInActiveWindow();
+        if (root == null) return null;
+
+        List<AccessibilityNodeInfo> containers = root.findAccessibilityNodeInfosByViewId(
+                SPOTIFY_PACKAGE + ":id/filter_compose");
+        root.recycle();
+
+        if (containers == null || containers.isEmpty()) {
+            Log.w(TAG, "[EXEC] findChipLabelNode: no filter_compose on screen");
+            return null;
+        }
+
+        AccessibilityNodeInfo container = containers.get(0);
+        for (int i = 1; i < containers.size(); i++) {
+            if (containers.get(i) != null) containers.get(i).recycle();
+        }
+
+        AccessibilityNodeInfo result = findTextNodeInSubtree(container, label);
+        container.recycle();
+
+        if (result != null) {
+            Log.i(TAG, "[EXEC] findChipLabelNode: found '" + label + "'");
+        } else {
+            Log.w(TAG, "[EXEC] findChipLabelNode: '" + label + "' not in filter_compose");
+        }
+        return result;
+    }
+
+    /**
+     * Depth-first search for the first node whose text equals label (case-insensitive).
+     * Returns the matched node — caller must recycle it.
+     */
+    protected AccessibilityNodeInfo findTextNodeInSubtree(AccessibilityNodeInfo node, String label) {
+        if (node == null) return null;
+        CharSequence text = node.getText();
+        if (text != null && text.toString().equalsIgnoreCase(label)) {
+            return node;
+        }
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child == null) continue;
+            AccessibilityNodeInfo found = findTextNodeInSubtree(child, label);
+            if (found != null) {
+                if (found != child) child.recycle();
+                return found;
+            }
+            child.recycle();
+        }
+        return null;
+    }
+
+    /**
+     * Find the innermost chip container wrapping a filter label TextView.
+     * Compose chips expose a generic android.view.View wrapper around the label;
+     * tapping the label center can miss the hit target and scroll the LazyRow.
+     * Caller must recycle the returned node.
+     */
+    protected AccessibilityNodeInfo findChipContainer(AccessibilityNodeInfo labelNode) {
+        if (labelNode == null) return null;
+        Rect labelBounds = new Rect();
+        labelNode.getBoundsInScreen(labelBounds);
+
+        AccessibilityNodeInfo best = null;
+        int bestWidth = Integer.MAX_VALUE;
+        AccessibilityNodeInfo cur = labelNode;
+
+        for (int i = 0; i < 8; i++) {
+            AccessibilityNodeInfo parent = cur.getParent();
+            if (cur != labelNode) cur.recycle();
+            if (parent == null) break;
+
+            String id = parent.getViewIdResourceName();
+            if (id != null && id.endsWith(":id/filter_compose")) {
+                parent.recycle();
+                break;
+            }
+
+            Rect pb = new Rect();
+            parent.getBoundsInScreen(pb);
+            if (pb.contains(labelBounds) && pb.width() >= labelBounds.width()
+                    && pb.width() < 600 && pb.height() >= 40 && pb.height() <= 160) {
+                if (pb.width() < bestWidth) {
+                    if (best != null) best.recycle();
+                    best = AccessibilityNodeInfo.obtain(parent);
+                    bestWidth = pb.width();
+                }
+            }
+            cur = parent;
+        }
+
+        if (best != null) return best;
+        return AccessibilityNodeInfo.obtain(labelNode);
+    }
+
+    /**
+     * Scroll the filter chip row horizontally until the chip is fully on screen.
+     * Returns false when a scroll gesture was dispatched — caller should retry after a delay.
+     */
+    protected boolean ensureFilterChipVisible(String label) {
+        AccessibilityNodeInfo labelNode = findChipLabelNode(label);
+        if (labelNode == null) return true;
+
+        AccessibilityNodeInfo chip = findChipContainer(labelNode);
+        labelNode.recycle();
+        Rect chipBounds = new Rect();
+        chip.getBoundsInScreen(chipBounds);
+        chip.recycle();
+
+        SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
+        int screenW = svc != null
+                ? svc.getResources().getDisplayMetrics().widthPixels : 1080;
+        int margin = 40;
+        if (chipBounds.left >= margin && chipBounds.right <= screenW - margin) {
+            return true;
+        }
+
+        AccessibilityNodeInfo compose = findById(SPOTIFY_PACKAGE + ":id/filter_compose");
+        if (compose == null) return true;
+        Rect rowBounds = new Rect();
+        compose.getBoundsInScreen(rowBounds);
+        compose.recycle();
+
+        float y = rowBounds.centerY();
+        float startX;
+        float endX;
+        if (chipBounds.left < margin) {
+            // Reveal chips on the left — finger moves right
+            startX = rowBounds.left + rowBounds.width() * 0.25f;
+            endX   = rowBounds.left + rowBounds.width() * 0.75f;
+            Log.i(TAG, "[EXEC] ensureFilterChipVisible '" + label
+                    + "': scrolling row right (chip clipped left)");
+        } else {
+            // Reveal chips on the right — finger moves left
+            startX = rowBounds.left + rowBounds.width() * 0.75f;
+            endX   = rowBounds.left + rowBounds.width() * 0.25f;
+            Log.i(TAG, "[EXEC] ensureFilterChipVisible '" + label
+                    + "': scrolling row left (chip clipped right)");
+        }
+        swipeHorizontal(startX, y, endX, y);
+        return false;
+    }
+
+    /**
+     * Tap a filter chip inside filter_compose using the chip container bounds.
+     * Tries ACTION_CLICK on ancestors first; falls back to a single gesture at
+     * the container center (not the label TextView, which can be offset).
+     */
+    protected boolean tapFilterChipByLabel(String label) {
+        AccessibilityNodeInfo labelNode = findChipLabelNode(label);
+        if (labelNode == null) return false;
+
+        AccessibilityNodeInfo chip = findChipContainer(labelNode);
+        if (chip != labelNode) labelNode.recycle();
+
+        AccessibilityNodeInfo cur = chip;
+        for (int level = 0; level < 6; level++) {
+            if (cur.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                Log.i(TAG, "[EXEC] tapFilterChip '" + label + "': ACTION_CLICK level=" + level);
+                if (cur != chip) cur.recycle();
+                chip.recycle();
+                return true;
+            }
+            AccessibilityNodeInfo parent = cur.getParent();
+            if (cur != chip) cur.recycle();
+            if (parent == null) break;
+
+            String id = parent.getViewIdResourceName();
+            if (id != null && id.endsWith(":id/filter_compose")) {
+                parent.recycle();
+                break;
+            }
+            cur = parent;
+        }
+
+        Rect b = new Rect();
+        chip.getBoundsInScreen(b);
+        chip.recycle();
+        if (b.isEmpty()) return false;
+
+        int tapX = b.centerX();
+        int tapY = b.centerY();
+        Log.i(TAG, "[EXEC] tapFilterChip '" + label + "' container bounds=" + b
+                + " tap=(" + tapX + "," + tapY + ")");
+        return tapAtCoords(tapX, tapY);
+    }
+
+    /**
+     * Tap a search-results filter chip by label inside filter_compose.
+     * Uses exact screen bounds from the label TextView (Compose chips are not clickable).
+     *
+     * @param fallbackX/Y UIAutoDev-confirmed center coords when the node is not found
+     */
+    /** True when the chip label or its parent reports isSelected(). */
+    protected boolean isFilterChipSelected(AccessibilityNodeInfo chip) {
+        if (chip == null) return false;
+        if (chip.isSelected()) return true;
+        AccessibilityNodeInfo parent = chip.getParent();
+        if (parent != null) {
+            boolean selected = parent.isSelected();
+            parent.recycle();
+            return selected;
+        }
+        return false;
+    }
+
+    protected boolean tapFilterChip(String label, float fallbackX, float fallbackY) {
+        if (tapFilterChipByLabel(label)) return true;
+        Log.w(TAG, "[EXEC] tapFilterChip '" + label + "' — fallback (" + (int) fallbackX + ","
+                + (int) fallbackY + ")");
+        return tapAtCoords(fallbackX, fallbackY);
     }
 
     /**
@@ -565,7 +1234,312 @@ public abstract class SpotifyExecutor {
     }
 
     /**
-     * Add ±35% random jitter to a base delay.
+     * Scroll the search results list down by one page.
+     *
+     * Primary: ACTION_SCROLL_FORWARD on the search RecyclerView.
+     * Fallback: swipe-up gesture across the results area (y 1800→950).
+     */
+    protected void scrollResultsList() {
+        // Primary: RecyclerView scroll action
+        AccessibilityNodeInfo recycler = findById(SPOTIFY_PACKAGE + ":id/search_content_recyclerview");
+        if (recycler == null) recycler = findById(SPOTIFY_PACKAGE + ":id/search_content_recycler_view");
+        if (recycler != null) {
+            boolean scrolled = recycler.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
+            recycler.recycle();
+            Log.i(TAG, "[EXEC] scrollResultsList: ACTION_SCROLL_FORWARD dispatched=" + scrolled);
+            if (scrolled) return;
+        }
+        // Fallback: swipe up gesture — results area sits between filter bar (~855) and nav bar (~2100)
+        boolean swiped = swipeUp(540, 1800, 540, 950);
+        Log.i(TAG, "[EXEC] scrollResultsList: swipe fallback dispatched=" + swiped);
+    }
+
+    /**
+     * Dispatch a swipe-up gesture (finger moves from fromY to toY, scrolling content downward).
+     * x stays fixed; duration 350ms mimics a natural scroll.
+     */
+    protected boolean swipeUp(float x, float fromY, float toX, float toY) {
+        SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
+        if (svc == null) return false;
+        try {
+            Path path = new Path();
+            path.moveTo(x, fromY);
+            path.lineTo(toX, toY);
+            GestureDescription gesture = new GestureDescription.Builder()
+                    .addStroke(new GestureDescription.StrokeDescription(path, 0, 350))
+                    .build();
+            return svc.dispatchGesture(gesture, null, null);
+        } catch (Exception e) {
+            Log.w(TAG, "[EXEC] swipeUp error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /** Horizontal swipe on the filter chip row (or any horizontal scroller). */
+    protected boolean swipeHorizontal(float fromX, float y, float toX, float toY) {
+        SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
+        if (svc == null) return false;
+        try {
+            Path path = new Path();
+            path.moveTo(fromX, y);
+            path.lineTo(toX, toY);
+            GestureDescription gesture = new GestureDescription.Builder()
+                    .addStroke(new GestureDescription.StrokeDescription(path, 0, 300))
+                    .build();
+            boolean dispatched = svc.dispatchGesture(gesture, null, null);
+            Log.d(TAG, "[EXEC] swipeHorizontal: dispatched=" + dispatched
+                    + " (" + (int) fromX + "," + (int) y + ")→(" + (int) toX + "," + (int) toY + ")");
+            return dispatched;
+        } catch (Exception e) {
+            Log.w(TAG, "[EXEC] swipeHorizontal error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Walk up the node tree to {@code id/row_root} — the clickable search-result row.
+     * Returns the original node if row_root is not found. Caller owns the return value.
+     */
+    protected AccessibilityNodeInfo findRowRoot(AccessibilityNodeInfo node) {
+        if (node == null) return null;
+        AccessibilityNodeInfo cur = node;
+        while (cur != null) {
+            String id = cur.getViewIdResourceName();
+            if (id != null && id.endsWith(":id/row_root")) return cur;
+            AccessibilityNodeInfo parent = cur.getParent();
+            if (parent != cur && cur != node) cur.recycle();
+            cur = parent;
+        }
+        return node;
+    }
+
+    /**
+     * Open a search-result row with a single tap — avoids double-tap select/deselect.
+     * Uses ACTION_CLICK on row_root first; one gesture fallback on the title column
+     * (right of artwork) if needed. Never combines gesture + performAction.
+     */
+    protected boolean tapSearchResultRow(AccessibilityNodeInfo row) {
+        if (row == null) return false;
+
+        AccessibilityNodeInfo rowRoot = findRowRoot(row);
+        if (rowRoot != row) row.recycle();
+
+        if (rowRoot.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+            Log.i(TAG, "[EXEC] tapSearchResultRow: ACTION_CLICK on row_root");
+            rowRoot.recycle();
+            return true;
+        }
+
+        Rect b = new Rect();
+        rowRoot.getBoundsInScreen(b);
+        rowRoot.recycle();
+        if (b.isEmpty()) return false;
+
+        // Artwork is the left ~40% — tap the title column to open, not toggle selection
+        int tapX = (int) (b.left + b.width() * 0.62f);
+        int tapY = b.centerY();
+        Log.i(TAG, "[EXEC] tapSearchResultRow: single gesture at title column ("
+                + tapX + "," + tapY + ")");
+        return tapAtCoords(tapX, tapY);
+    }
+
+    /**
+     * Dispatch a tap gesture to raw screen coordinates.
+     *
+     * Used when the target is in a different window/package than the active app
+     * (e.g. the Samsung keyboard).  dispatchGesture fires at screen coordinates
+     * regardless of which window owns that area.
+     */
+    protected boolean tapAtCoords(float x, float y) {
+        SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
+        if (svc == null) return false;
+        long tapDuration = 80 + ThreadLocalRandom.current().nextInt(120);
+        Path path = new Path();
+        path.moveTo(x, y);
+        try {
+            GestureDescription gesture = new GestureDescription.Builder()
+                    .addStroke(new GestureDescription.StrokeDescription(path, 0, tapDuration))
+                    .build();
+            boolean dispatched = svc.dispatchGesture(gesture, null, null);
+            Log.d(TAG, "[EXEC] tapAtCoords: dispatched=" + dispatched
+                    + " coords=(" + (int) x + "," + (int) y + ")");
+            return dispatched;
+        } catch (Exception e) {
+            Log.w(TAG, "[EXEC] tapAtCoords error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Tap the keyboard's search / action key by:
+     *   1. Finding the TYPE_INPUT_METHOD window via getWindows()
+     *   2. Scanning the keyboard's view tree for a node with content-desc = "Search"
+     *      (UIAutoDev confirmed: Samsung keyboard search key has exactly this desc)
+     *   3. Dispatching a gesture at that node's center coordinates
+     *
+     * Why content-desc search instead of hardcoded coordinates:
+     *   UIAutoDev confirmed the exact node:
+     *     package = com.samsung.android.honeyboard
+     *     content-desc = "Search"
+     *     bounds = [916,2061][1057,2177]  → center (987, 2119)
+     *   The bounds vary slightly with keyboard height/mode, but content-desc = "Search"
+     *   is stable — finding the node directly gives the exact tap coordinates every time.
+     *
+     * Fallback: if no "Search" node is found in the keyboard tree (Gboard, SwiftKey, etc.),
+     *   falls back to tapping at 8.6% from the right edge and 5% from the bottom of the
+     *   keyboard window — a proportional estimate that covers most layouts.
+     *
+     * If the keyboard was already dismissed (ACTION_IME_ENTER succeeded), no
+     * TYPE_INPUT_METHOD window is visible and this returns as a safe no-op.
+     */
+    protected void tapKeyboardSearchButton() {
+        // ── Tier 1: node-based tap ─────────────────────────────────────────────
+        // Requires flagRetrieveInteractiveWindows in accessibility_service_config.xml.
+        // Iterate ALL windows; for each window that looks like the Samsung keyboard
+        // (TYPE_INPUT_METHOD or package contains "honeyboard"), BFS-search the tree
+        // for the node with content-desc = "Search".
+        //
+        // UIAutoDev confirmed (Samsung S21 FE, 1080×2340):
+        //   resource-id  : com.samsung.android.honeyboard:id/keyboard_touch_layer
+        //   content-desc : "Search"
+        //   bounds       : [916,2061][1057,2177]  → center (987, 2119)
+        //
+        // ── Tier 2: proportional coords from keyboard window rect ──────────────
+        // Falls back when the node tree is inaccessible (Samsung keyboard may
+        // restrict root access in some ROM versions).
+        //
+        // ── Tier 3: hardcoded confirmed center ────────────────────────────────
+        // If no keyboard window found at all (flagRetrieveInteractiveWindows not
+        // yet in effect, or service not restarted), use the UIAutoDev-confirmed
+        // center (987, 2119) directly.  Reliable on this device.
+
+        SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
+        if (svc == null) return;
+
+        // ── Tier 1 ────────────────────────────────────────────────────────────
+        try {
+            List<AccessibilityWindowInfo> windows = svc.getWindows();
+            if (windows != null) {
+                Rect kbWindowBounds = null;   // saved for tier-2 fallback
+                boolean tapped = false;
+
+                for (AccessibilityWindowInfo w : windows) {
+                    if (w == null) continue;
+
+                    boolean isKeyboardWindow =
+                            w.getType() == AccessibilityWindowInfo.TYPE_INPUT_METHOD;
+
+                    // Also accept windows whose root package contains "honeyboard"
+                    // in case Samsung keyboard uses a non-standard window type.
+                    if (!isKeyboardWindow) {
+                        AccessibilityNodeInfo peek = w.getRoot();
+                        if (peek != null) {
+                            CharSequence pkg = peek.getPackageName();
+                            if (pkg != null && pkg.toString().contains("honeyboard"))
+                                isKeyboardWindow = true;
+                            peek.recycle();
+                        }
+                    }
+
+                    if (isKeyboardWindow && !tapped) {
+                        // Save window bounds for tier-2 fallback
+                        Rect wb = new Rect();
+                        w.getBoundsInScreen(wb);
+                        if (!wb.isEmpty()) kbWindowBounds = wb;
+
+                        AccessibilityNodeInfo kbRoot = w.getRoot();
+                        if (kbRoot != null) {
+                            AccessibilityNodeInfo searchKey = findKeyboardKey(kbRoot, "Search");
+                            kbRoot.recycle();
+                            if (searchKey != null) {
+                                Rect b = new Rect();
+                                searchKey.getBoundsInScreen(b);
+                                tapped = tapAtCoords(b.centerX(), b.centerY());
+                                searchKey.recycle();
+                                Log.i(TAG, "[EXEC] tapKeyboardSearchButton [tier1] content-desc='Search'"
+                                        + " bounds=" + b.toShortString()
+                                        + " center=(" + b.centerX() + "," + b.centerY() + ")"
+                                        + " dispatched=" + tapped);
+                            } else {
+                                Log.w(TAG, "[EXEC] tapKeyboardSearchButton [tier1] 'Search' node not found in tree");
+                            }
+                        } else {
+                            Log.w(TAG, "[EXEC] tapKeyboardSearchButton [tier1] kbRoot=null (keyboard restricts tree access)");
+                        }
+                    }
+                    w.recycle();
+                }
+
+                if (tapped) return;
+
+                // ── Tier 2 ────────────────────────────────────────────────────
+                if (kbWindowBounds != null) {
+                    // Button is near bottom-right; 8.6% from right, 5% from bottom
+                    float tapX = kbWindowBounds.right  - kbWindowBounds.width()  * 0.086f;
+                    float tapY = kbWindowBounds.bottom - kbWindowBounds.height() * 0.05f;
+                    boolean t2 = tapAtCoords(tapX, tapY);
+                    Log.i(TAG, "[EXEC] tapKeyboardSearchButton [tier2] proportional coords"
+                            + " kb=" + kbWindowBounds.toShortString()
+                            + " tap=(" + (int) tapX + "," + (int) tapY + ")"
+                            + " dispatched=" + t2);
+                    if (t2) return;
+                }
+
+                if (kbWindowBounds != null) return; // keyboard found but taps failed — don't guess
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "[EXEC] tapKeyboardSearchButton tier1/2 error: " + e.getMessage());
+        }
+
+        // ── Tier 3 ────────────────────────────────────────────────────────────
+        // getWindows() returned nothing useful (flagRetrieveInteractiveWindows not
+        // yet active until service is re-enabled after APK install, or no keyboard
+        // window visible).  Use UIAutoDev-confirmed center from bounds [916,2061][1057,2177].
+        boolean t3 = tapAtCoords(987, 2119);
+        Log.i(TAG, "[EXEC] tapKeyboardSearchButton [tier3] hardcoded (987,2119) dispatched=" + t3);
+    }
+
+    /**
+     * BFS scan of a keyboard window tree looking for the first node whose
+     * content-description exactly matches desc and is enabled.
+     *
+     * Uses BFS (queue) rather than recursion so memory management is simple:
+     * every dequeued node is either returned (caller recycles) or recycled here.
+     * Remaining queue nodes are recycled when the match is found early.
+     *
+     * Returns the matching node (caller must call recycle()) or null.
+     */
+    private AccessibilityNodeInfo findKeyboardKey(AccessibilityNodeInfo root, String desc) {
+        if (root == null) return null;
+        // Check root first (no queue allocation if root itself matches)
+        CharSequence rootCd = root.getContentDescription();
+        if (rootCd != null && desc.equals(rootCd.toString()) && root.isEnabled()) {
+            return root;
+        }
+        java.util.ArrayDeque<AccessibilityNodeInfo> queue = new java.util.ArrayDeque<>();
+        for (int i = 0; i < root.getChildCount(); i++) {
+            AccessibilityNodeInfo child = root.getChild(i);
+            if (child != null) queue.add(child);
+        }
+        while (!queue.isEmpty()) {
+            AccessibilityNodeInfo node = queue.poll();
+            CharSequence cd = node.getContentDescription();
+            if (cd != null && desc.equals(cd.toString()) && node.isEnabled()) {
+                // Recycle all remaining queued nodes before returning
+                for (AccessibilityNodeInfo rem : queue) rem.recycle();
+                return node; // caller recycles this one
+            }
+            for (int i = 0; i < node.getChildCount(); i++) {
+                AccessibilityNodeInfo child = node.getChild(i);
+                if (child != null) queue.add(child);
+            }
+            node.recycle();
+        }
+        return null;
+    }
+
+    /**
+     * Add ±10% random jitter to a base delay.
      *
      * Usage:  handler.postDelayed(this::nextStep, jitteredDelay(2_000));
      * Result: delay between 1300–2700ms instead of a machine-perfect 2000ms.
@@ -574,8 +1548,8 @@ public abstract class SpotifyExecutor {
      * is never constant across repeated runs.
      */
     protected long jitteredDelay(long baseMs) {
-        long jitter = (long) (baseMs * 0.35);
-        // Uniformly distributed in [-jitter, +jitter]
+        if (baseMs <= 0) return 0;
+        long jitter = Math.max(15, (long) (baseMs * 0.10));
         return baseMs + ThreadLocalRandom.current().nextLong(-jitter, jitter + 1);
     }
 
@@ -592,11 +1566,10 @@ public abstract class SpotifyExecutor {
     }
 
     /**
-     * Schedule the next step with a randomized human-like delay (2–4 seconds).
-     * Inserts between automation steps to avoid machine-perfect timing patterns.
+     * Schedule the next step with a short randomized delay (500–900 ms).
      */
     protected void humanDelay(Runnable next) {
-        humanDelay(2_000, 4_000, next);
+        humanDelay(650, 1_000, next);
     }
 
     /**
@@ -605,7 +1578,7 @@ public abstract class SpotifyExecutor {
     protected void humanDelay(long minMs, long maxMs, Runnable next) {
         long delay = minMs + ThreadLocalRandom.current().nextInt((int)(maxMs - minMs));
         Log.d(TAG, "[EXEC] Human delay: " + delay + "ms");
-        handler.postDelayed(next, delay);
+        scheduleStep(next, delay);
     }
 
     /**
@@ -614,12 +1587,18 @@ public abstract class SpotifyExecutor {
      */
     protected boolean typeText(AccessibilityNodeInfo node, String text) {
         if (node == null) return false;
-        // Focus the field first
         node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+        // Clear stale text from a previous search before setting the new query.
+        Bundle clear = new Bundle();
+        clear.putCharSequence(
+                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, "");
+        node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, clear);
         Bundle args = new Bundle();
         args.putCharSequence(
                 AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text);
-        return node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
+        boolean ok = node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
+        Log.i(TAG, "[EXEC] typeText: set '" + text + "' ok=" + ok);
+        return ok;
     }
 
     /**
@@ -712,6 +1691,27 @@ public abstract class SpotifyExecutor {
      */
     public  static volatile long   activeMonitorStartMs    = 0;
 
+    /** Stop seekbar/event monitor from a previous run — must run before any new command. */
+    public static void stopPlaybackMonitor() {
+        if (activeMonitorRunId != null) {
+            Log.i(TAG, "[MONITOR] Stopped — new command starting (was run=" + activeMonitorRunId + ")");
+            activeMonitorRunId      = null;
+            activeMonitorTrackTitle = null;
+            activeMonitorStartMs    = 0;
+        }
+    }
+
+    /** True when Spotify is showing search results (filter chips or query field visible). */
+    protected boolean isOnSearchResultsScreen() {
+        if (isFilterComposeVisible()) return true;
+        AccessibilityNodeInfo input = findSearchInput();
+        if (input != null) {
+            input.recycle();
+            return true;
+        }
+        return false;
+    }
+
     /**
      * Called by SpotifyAccessibilityService when it detects a track title change
      * while a monitor is active.  Sends PLAYBACK_FINISHED and clears state so
@@ -722,6 +1722,10 @@ public abstract class SpotifyExecutor {
     public static void onTrackChangedByEvent(String newTitle) {
         String runId = activeMonitorRunId;
         if (runId == null) return;
+        if (commandInProgress.get()) {
+            Log.d(TAG, "[MONITOR] Track change ignored — command in progress");
+            return;
+        }
 
         // Clear immediately so the postDelayed backup poll stops on its next tick
         activeMonitorRunId      = null;
@@ -755,20 +1759,68 @@ public abstract class SpotifyExecutor {
      * @param monitorRunId run_id of the just-completed command, echoed in PLAYBACK_FINISHED.
      */
     protected void startPlaybackMonitor(String monitorRunId) {
+        startPlaybackMonitorAttempt(monitorRunId, 0);
+    }
+
+    /**
+     * Internal retry helper for startPlaybackMonitor.
+     *
+     * Two preconditions must be satisfied before the baseline title is captured:
+     *
+     *   1. No audio ad is currently playing.
+     *      If an ad is active when commandDone(true) fires (e.g. the previous song ended
+     *      mid-session and an ad started before the executor returned), capturing its title
+     *      as the baseline would cause checkPlaybackTrackChange() to fire PLAYBACK_FINISHED
+     *      the instant the ad ends and the next song title appears — far too early.
+     *      We wait up to 5 × 3 s = 15 s for the ad to clear.
+     *
+     *   2. readCurrentTrackTitle() returns a non-null value.
+     *      Spotify's Now Playing bar can take 1-3 s to update after a song starts.
+     *      A null baseline makes checkPlaybackTrackChange() skip every check
+     *      (line: if (expectedTitle == null) return;), leaving the event-driven path blind
+     *      until the seekbar-poll backup catches up.
+     *      We retry up to 3 × 2 s = 6 s for the title to settle.
+     *
+     * @param monitorRunId  run_id echoed in PLAYBACK_FINISHED.
+     * @param attempt       retry counter — used to cap both retry loops.
+     */
+    private void startPlaybackMonitorAttempt(String monitorRunId, int attempt) {
+        SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
+
+        // Precondition 1: wait for any active audio ad to clear (max 5 retries × 3 s)
+        if (attempt < 5 && svc != null && OverlayGuard.isAudioAdPlaying(svc)) {
+            Log.i(TAG, "[MONITOR] Ad active at monitor start (attempt=" + attempt
+                    + ") — deferring 3 s, run=" + monitorRunId);
+            scheduleStep(
+                    () -> startPlaybackMonitorAttempt(monitorRunId, attempt + 1),
+                    3_000);
+            return;
+        }
+
+        // Precondition 2: wait for a non-null track title (max 3 retries × 2 s)
+        String initialTitle = readCurrentTrackTitle();
+        if (initialTitle == null && attempt < 3) {
+            Log.i(TAG, "[MONITOR] Track title null at monitor start (attempt=" + attempt
+                    + ") — deferring 2 s, run=" + monitorRunId);
+            scheduleStep(
+                    () -> startPlaybackMonitorAttempt(monitorRunId, attempt + 1),
+                    2_000);
+            return;
+        }
+
         // Strategy 1: register for event-driven detection.
         // SpotifyAccessibilityService will call onTrackChangedByEvent() the instant
         // Spotify's now-playing title changes — no postDelayed required.
-        String initialTitle = readCurrentTrackTitle();
         activeMonitorRunId      = monitorRunId;
         activeMonitorTrackTitle = initialTitle;
         activeMonitorStartMs    = System.currentTimeMillis();
         Log.i(TAG, "[MONITOR] Playback monitor started run=" + monitorRunId
-                + " initial_title='" + initialTitle + "'"
+                + " initial_title='" + initialTitle + "' attempt=" + attempt
                 + " (event-driven + seekbar poll, stabilization=10s)");
 
         // Strategy 2: seekbar poll backup (fires if event-driven misses the change)
         long startMs = System.currentTimeMillis();
-        handler.postDelayed(
+        scheduleStep(
                 () -> pollPlaybackPosition(monitorRunId, startMs, 0),
                 PLAYBACK_POLL_INTERVAL_MS);
     }
@@ -804,12 +1856,37 @@ public abstract class SpotifyExecutor {
                     + "handled run=" + monitorRunId);
             return;
         }
+        if (commandInProgress.get()) {
+            Log.i(TAG, "[MONITOR] poll halted — automation command in progress");
+            return;
+        }
         if (System.currentTimeMillis() - startMs > PLAYBACK_MONITOR_MAX_MS) {
             Log.w(TAG, "[MONITOR] 90-min cap — stopping monitor run=" + monitorRunId);
             return;
         }
         if (SpotifyAccessibilityService.instance == null) {
             Log.w(TAG, "[MONITOR] Service gone — stopping monitor run=" + monitorRunId);
+            return;
+        }
+
+        // ── Pause watchdog ────────────────────────────────────────────────────
+        // If Spotify is paused mid-session (accidental button press, headphone
+        // disconnect, notification tap, Bluetooth handoff, etc.) the seekbar
+        // stops advancing and PLAYBACK_FINISHED never fires — the session
+        // scheduler hangs in _wait_for_playback_finish() for the full timeout.
+        //
+        // Every 5s poll: detect the paused state and silently tap Play to resume.
+        // Skip this check while an audio ad is playing — ads can look "paused"
+        // to the UI tree but are not, and tapping Play during an ad skips it
+        // or opens a premium upsell.
+        SpotifyAccessibilityService pauseSvc = SpotifyAccessibilityService.instance;
+        if (!OverlayGuard.isAudioAdPlaying(pauseSvc) && isPlaybackPaused()) {
+            Log.i(TAG, "[MONITOR] Playback paused detected — auto-resuming run=" + monitorRunId);
+            resumePlayback();
+            // Reschedule next poll; skip seekbar read this cycle (position is stale while paused)
+            scheduleStep(
+                    () -> pollPlaybackPosition(monitorRunId, startMs, notFoundCount),
+                    PLAYBACK_POLL_INTERVAL_MS);
             return;
         }
 
@@ -823,12 +1900,12 @@ public abstract class SpotifyExecutor {
                 Log.i(TAG, "[MONITOR] SeekBar absent after 3 polls — tapping mini-player to expand");
                 tryExpandNowPlayingBar();
                 // Give the expand animation 2 s before the next poll
-                handler.postDelayed(
+                scheduleStep(
                         () -> pollPlaybackPosition(monitorRunId, startMs, notFoundCount + 1),
                         2_000);
                 return;
             }
-            handler.postDelayed(
+            scheduleStep(
                     () -> pollPlaybackPosition(monitorRunId, startMs, notFoundCount + 1),
                     PLAYBACK_POLL_INTERVAL_MS);
             return;
@@ -844,7 +1921,7 @@ public abstract class SpotifyExecutor {
         // Guard 1: ignore short content (ads are 15-30s, real songs are 45s+)
         if (maxMs < MIN_SONG_DURATION_MS) {
             Log.d(TAG, "[MONITOR] Skipping short seekbar (" + (int)(maxMs/1000) + "s) — likely an ad");
-            handler.postDelayed(
+            scheduleStep(
                     () -> pollPlaybackPosition(monitorRunId, startMs, 0),
                     PLAYBACK_POLL_INTERVAL_MS);
             return;
@@ -855,7 +1932,7 @@ public abstract class SpotifyExecutor {
         long monitorAgeMs = System.currentTimeMillis() - startMs;
         if (monitorAgeMs < MIN_MONITOR_AGE_MS) {
             Log.d(TAG, "[MONITOR] Too early to fire (" + (monitorAgeMs/1000) + "s into monitoring)");
-            handler.postDelayed(
+            scheduleStep(
                     () -> pollPlaybackPosition(monitorRunId, startMs, 0),
                     PLAYBACK_POLL_INTERVAL_MS);
             return;
@@ -869,9 +1946,79 @@ public abstract class SpotifyExecutor {
         }
 
         // Still playing — poll again (reset counter since seekbar is visible)
-        handler.postDelayed(
+        scheduleStep(
                 () -> pollPlaybackPosition(monitorRunId, startMs, 0),
                 PLAYBACK_POLL_INTERVAL_MS);
+    }
+
+    /**
+     * Returns true if Spotify is currently paused (not playing).
+     *
+     * Detection strategy:
+     *   The play/pause button in the full Now Playing screen and in the mini-player
+     *   changes its content-description depending on state:
+     *     - Playing  → content-desc contains "Pause"
+     *     - Paused   → content-desc contains "Play"
+     *
+     *   We check the full-screen button first (most reliable when the player is open),
+     *   then fall back to the mini-player button.
+     *
+     *   NOTE: this is intentionally a lightweight read — no tree traversal, just
+     *   findById() on a known resource-id.  It runs every 5s inside the poll loop
+     *   so it must be cheap.
+     */
+    private boolean isPlaybackPaused() {
+        // Full Now Playing screen play/pause button
+        // content-desc = "Play" or "Play song" when paused; "Pause" when playing
+        AccessibilityNodeInfo btn =
+                findById(SPOTIFY_PACKAGE + ":id/nowplaying_elements_playpause_button");
+        if (btn != null) {
+            CharSequence cd = btn.getContentDescription();
+            btn.recycle();
+            if (cd != null) {
+                String desc = cd.toString();
+                // "Pause" → still playing, "Play…" → paused
+                return desc.startsWith("Play");
+            }
+        }
+
+        // Mini-player play/pause button (when full screen is closed)
+        AccessibilityNodeInfo mini = findById(SPOTIFY_PACKAGE + ":id/play_pause_button");
+        if (mini != null) {
+            CharSequence cd = mini.getContentDescription();
+            mini.recycle();
+            if (cd != null) return cd.toString().startsWith("Play");
+        }
+
+        // findByDesc broad fallback — "Play song" content-desc visible on paused state
+        AccessibilityNodeInfo broad = findByDesc("Play song");
+        if (broad != null) { broad.recycle(); return true; }
+
+        return false;  // could not determine — assume playing
+    }
+
+    /**
+     * Taps the Spotify Play button to resume paused playback.
+     *
+     * Tries the full Now Playing screen button first, then the mini-player,
+     * then a broad content-desc search.  Uses tapAtNodeRandom() (coordinate
+     * jitter + random press duration) to match the executor pattern and avoid
+     * machine-perfect taps that bot detection might flag.
+     */
+    private void resumePlayback() {
+        AccessibilityNodeInfo btn =
+                findById(SPOTIFY_PACKAGE + ":id/nowplaying_elements_playpause_button");
+        if (btn == null) btn = findByDesc("Play song");
+        if (btn == null) btn = findById(SPOTIFY_PACKAGE + ":id/play_pause_button");
+        if (btn == null) btn = findByDesc("Play");
+
+        if (btn != null) {
+            boolean tapped = tapAtNodeRandom(btn);
+            btn.recycle();
+            Log.i(TAG, "[MONITOR] resumePlayback: tapped=" + tapped);
+        } else {
+            Log.w(TAG, "[MONITOR] resumePlayback: Play button not found in UI tree");
+        }
     }
 
     /**
@@ -952,6 +2099,10 @@ public abstract class SpotifyExecutor {
      * Uses ACTION_CLICK directly — more reliable than dispatchGesture for this expand action.
      */
     private void tryExpandNowPlayingBar() {
+        if (commandInProgress.get()) {
+            Log.i(TAG, "[MONITOR] skip expand mini-player — command in progress");
+            return;
+        }
         // UIAutoDev-confirmed ID first, then fallbacks for older Spotify versions
         AccessibilityNodeInfo bar = findById(SPOTIFY_PACKAGE + ":id/now_playing_container");
         if (bar == null) bar = findById(SPOTIFY_PACKAGE + ":id/now_playing_bar_layout");
@@ -997,6 +2148,228 @@ public abstract class SpotifyExecutor {
         }
     }
 
+    // ── Like / Skip choreography (PLAYBACK actions) ───────────────────────────
+    //
+    // PLAY_FROM_ALBUM / PLAY_FROM_PLAYLIST / SEARCH_AND_PLAY tasks can carry
+    // "likes" and "skips" counts (set in the dashboard "Songs to like / skip"
+    // fields). After playback is confirmed, runLikeSkipChoreography() spreads those
+    // like/skip actions across the playing collection with randomized human delays,
+    // then calls onComplete (which fires commandDone + startPlaybackMonitor).
+    //
+    // Constraints baked in here:
+    //   • Runs while commandInProgress=true with NO step watchdog armed — the spread
+    //     gaps (7-13s) would otherwise trip the 15s STEP_TIMEOUT and fail the command.
+    //   • Must finish well within the 180s command TTL, so the total number of
+    //     actions is capped (MAX_CHOREO_ACTIONS) and gaps kept moderate. A typical
+    //     3-like / 1-skip run completes in ~60-80s including the play setup.
+    //   • To like DISTINCT songs the bot taps Next between likes. Those advances
+    //     reuse the skip budget first; if more likes remain after skips run out it
+    //     adds extra Next presses (logged as step_advance_*) so each like lands on a
+    //     new track. Net result: N liked songs and at least M skips.
+
+    protected static final long CHOREO_GAP_MIN_MS = 7_000;
+    protected static final long CHOREO_GAP_MAX_MS = 13_000;
+    /** Hard cap on total like+skip+advance actions — protects the command TTL. */
+    private static final int    MAX_CHOREO_ACTIONS = 9;
+
+    private java.util.List<String> choreoPlan;     // entries: "LIKE" / "SKIP" / "ADVANCE"
+    private int                    choreoIndex;
+    private Runnable               choreoOnComplete;
+
+    /**
+     * Spread {@code likes} like actions and {@code skips} skip actions across the
+     * currently playing collection, then run {@code onComplete}. When both counts
+     * are 0 this is a no-op that calls onComplete immediately.
+     *
+     * Call this AFTER the play step succeeds and AFTER cancelStepTimeout() — it must
+     * run with no watchdog armed.
+     */
+    protected void runLikeSkipChoreography(int likes, int skips, Runnable onComplete) {
+        likes = Math.max(0, likes);
+        skips = Math.max(0, skips);
+        if (likes == 0 && skips == 0) {
+            onComplete.run();
+            return;
+        }
+        choreoPlan       = buildChoreoPlan(likes, skips);
+        choreoIndex      = 0;
+        choreoOnComplete = onComplete;
+        Log.i(TAG, "[CHOREO] Plan (likes=" + likes + " skips=" + skips + "): " + choreoPlan);
+        // Let the first song actually play for a few seconds before touching the UI.
+        scheduleStep(this::runNextChoreoAction, jitteredDelay(CHOREO_GAP_MIN_MS));
+    }
+
+    /** Interleave likes and skips; insert Next "advance" steps so likes hit new songs. */
+    private java.util.List<String> buildChoreoPlan(int likes, int skips) {
+        java.util.List<String> plan = new java.util.ArrayList<>();
+        int likesLeft = likes;
+        int skipsLeft = skips;
+        while ((likesLeft > 0 || skipsLeft > 0) && plan.size() < MAX_CHOREO_ACTIONS) {
+            if (likesLeft > 0) { plan.add("LIKE"); likesLeft--; }
+            if (plan.size() >= MAX_CHOREO_ACTIONS) break;
+            if (skipsLeft > 0) {
+                plan.add("SKIP"); skipsLeft--;
+            } else if (likesLeft > 0) {
+                plan.add("ADVANCE");   // move to a new song so the next like is distinct
+            }
+        }
+        return plan;
+    }
+
+    private void runNextChoreoAction() {
+        if (timeoutFired) return;
+
+        if (choreoPlan == null || choreoIndex >= choreoPlan.size()) {
+            Log.i(TAG, "[CHOREO] Complete — " + choreoIndex + " actions performed");
+            Runnable done = choreoOnComplete;
+            choreoOnComplete = null;
+            choreoPlan       = null;
+            if (done != null) done.run();
+            return;
+        }
+
+        String action = choreoPlan.get(choreoIndex);
+        int    n      = choreoIndex + 1;
+        choreoIndex++;
+
+        Runnable next = () -> {
+            long delay = (choreoPlan != null && choreoIndex < choreoPlan.size())
+                    ? humanChoreoGap() : GAP_SHORT;
+            scheduleStep(this::runNextChoreoAction, delay);
+        };
+
+        switch (action) {
+            case "LIKE":
+                likeCurrentTrack("step_like_" + n, next);
+                break;
+            case "ADVANCE":
+                // Reported as an advance — it taps Next purely to reach a new song.
+                skipCurrentTrack("step_advance_" + n, next);
+                break;
+            case "SKIP":
+            default:
+                skipCurrentTrack("step_skip_" + n, next);
+                break;
+        }
+    }
+
+    private long humanChoreoGap() {
+        return CHOREO_GAP_MIN_MS
+                + ThreadLocalRandom.current().nextLong(CHOREO_GAP_MAX_MS - CHOREO_GAP_MIN_MS + 1);
+    }
+
+    /** Like the currently playing track inline (no commandDone). Soft-succeeds if the
+     *  button can't be found — a missing like must never fail the whole play command. */
+    private void likeCurrentTrack(String stepId, Runnable onDone) {
+        stepStarted(stepId, "Like Song");
+        attemptLike(stepId, onDone, false);
+    }
+
+    private void attemptLike(String stepId, Runnable onDone, boolean openedPlayer) {
+        if (timeoutFired) return;
+
+        // Always navigate to the full player first. The album/playlist detail page has
+        // its own "Add item" heart that saves the whole collection — not the current track.
+        // Opening the full player guarantees the like button targets the playing song.
+        if (!openedPlayer) {
+            if (openFullPlayer()) {
+                scheduleStep(() -> attemptLike(stepId, onDone, true), GAP_LONG);
+            } else {
+                Log.w(TAG, "[CHOREO] " + stepId + " — could not open full player, soft-skip");
+                stepOk(stepId, "Like Song");
+                onDone.run();
+            }
+            return;
+        }
+
+        // Already liked → idempotent success.
+        AccessibilityNodeInfo already = findByDesc("Remove item");
+        if (already != null) {
+            already.recycle();
+            Log.i(TAG, "[CHOREO] " + stepId + " — already liked (idempotent)");
+            stepOk(stepId, "Like Song");
+            onDone.run();
+            return;
+        }
+
+        AccessibilityNodeInfo likeBtn = findByDesc("Add item");
+        if (likeBtn == null) likeBtn = findById(SPOTIFY_PACKAGE + ":id/add_to_button");
+
+        if (likeBtn == null) {
+            Log.w(TAG, "[CHOREO] " + stepId + " — like button not found on full player, soft-skip");
+            stepOk(stepId, "Like Song");
+            onDone.run();
+            return;
+        }
+
+        boolean clicked = likeBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+        if (!clicked) {
+            AccessibilityNodeInfo parent = likeBtn.getParent();
+            if (parent != null) {
+                clicked = parent.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                parent.recycle();
+            }
+        }
+        likeBtn.recycle();
+        Log.i(TAG, "[CHOREO] " + stepId + " — like tapped=" + clicked);
+
+        // Some Spotify builds show a "Liked Songs" bottom sheet — confirm it.
+        scheduleStep(() -> {
+            AccessibilityNodeInfo sheet = findByText("Liked Songs");
+            if (sheet != null) {
+                clickFollowNode(sheet);
+                sheet.recycle();
+            }
+            stepOk(stepId, "Like Song");
+            onDone.run();
+        }, GAP_SHORT);
+    }
+
+    /** Skip to the next track inline (no commandDone). Soft-succeeds if Next is missing. */
+    private void skipCurrentTrack(String stepId, Runnable onDone) {
+        stepStarted(stepId, "Skip Track");
+        attemptSkip(stepId, onDone, false);
+    }
+
+    private void attemptSkip(String stepId, Runnable onDone, boolean openedPlayer) {
+        if (timeoutFired) return;
+
+        AccessibilityNodeInfo skipBtn = findByDesc("Next");
+        if (skipBtn == null) skipBtn = findByDesc("Next track");
+        if (skipBtn == null) skipBtn = findByDesc("Skip to next track");
+        if (skipBtn == null) skipBtn = findByDesc("Skip forward");
+
+        if (skipBtn == null) {
+            if (!openedPlayer && openFullPlayer()) {
+                scheduleStep(() -> attemptSkip(stepId, onDone, true), GAP_LONG);
+                return;
+            }
+            Log.w(TAG, "[CHOREO] " + stepId + " — Next button not found, soft-skip");
+            stepOk(stepId, "Skip Track");
+            onDone.run();
+            return;
+        }
+
+        boolean clicked = skipBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+        skipBtn.recycle();
+        Log.i(TAG, "[CHOREO] " + stepId + " — skip tapped=" + clicked);
+        stepOk(stepId, "Skip Track");
+        onDone.run();
+    }
+
+    /** Tap the Now Playing bar to open the full player so like/skip buttons exist. */
+    private boolean openFullPlayer() {
+        AccessibilityNodeInfo bar = findById(SPOTIFY_PACKAGE + ":id/now_playing_bar_layout");
+        if (bar == null) bar = findById(SPOTIFY_PACKAGE + ":id/now_playing_container");
+        if (bar == null) bar = findByDesc("Now Playing Bar");
+        if (bar == null) return false;
+        boolean clicked = bar.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+        if (!clicked) clicked = tapAtNodeRandom(bar);
+        bar.recycle();
+        Log.i(TAG, "[CHOREO] openFullPlayer tapped=" + clicked);
+        return true;
+    }
+
     // ── Step event protocol ───────────────────────────────────────────────────
 
     protected void stepStarted(String stepId, String stepName) {
@@ -1023,6 +2396,63 @@ public abstract class SpotifyExecutor {
     private static final long COMMAND_DONE_RETRY_MS    = 2_000;
 
     /**
+     * Called when the backend sends CANCEL_COMMAND (user tapped Stop on the dashboard).
+     * Handles two cases:
+     *
+     *   A) Command still in progress (commandInProgress == true):
+     *      Kill step chain + send COMMAND_DONE CANCELLED so the backend closes the run.
+     *
+     *   B) Command already done, playback monitor still running (commandInProgress == false):
+     *      commandDone() already sent SUCCESS — don't send a second terminal event or the
+     *      backend would overwrite a SUCCESS run with FAILED. Just stop the monitor + pause.
+     *
+     * Must be called on the main thread (accessibility node reads require it).
+     */
+    public final void cancel() {
+        if (cancelled) {
+            Log.d(TAG, "[EXEC] cancel() — already cancelled, ignoring");
+            return;
+        }
+        cancelled = true;
+        Log.i(TAG, "[EXEC] cancel() — commandInProgress=" + commandInProgress.get());
+
+        // Stop all pending step callbacks (safe — only executor uses stepHandler).
+        timeoutFired = true;
+        stepHandler.removeCallbacksAndMessages(null);
+        cancelStepTimeout();
+
+        // Stop the playback monitor so it doesn't keep polling Spotify.
+        stopPlaybackMonitor();
+
+        // Pause Spotify so music actually stops on the phone.
+        pauseForCancel();
+
+        // Only send COMMAND_DONE CANCELLED if the step chain hasn't finished yet.
+        // If commandDone() already fired, the run is closed on the backend —
+        // a second terminal event would corrupt the run status.
+        if (commandInProgress.get()) {
+            JsonObject event = buildEvent("COMMAND_DONE", null, null, "CANCELLED", "FAILED");
+            sendCommandDoneWithRetry(event, 0);
+        }
+    }
+
+    private void pauseForCancel() {
+        try {
+            AccessibilityNodeInfo btn =
+                    findById(SPOTIFY_PACKAGE + ":id/nowplaying_elements_playpause_button");
+            if (btn == null) btn = findByDesc("Pause");
+            if (btn != null) {
+                CharSequence cd = btn.getContentDescription();
+                if (cd == null || cd.toString().startsWith("Pause")) {
+                    btn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                    Log.i(TAG, "[EXEC] cancel() — Spotify paused");
+                }
+                btn.recycle();
+            }
+        } catch (Exception ignored) {}
+    }
+
+    /**
      * Signal command completion.
      * Always cancels any live watchdog first — prevents the watchdog from firing
      * after commandDone() has already sent a terminal event.
@@ -1047,25 +2477,55 @@ public abstract class SpotifyExecutor {
         if (liveWs != null && liveWs.send(event)) {
             if (attempt > 0) Log.i(TAG, "[EXEC] COMMAND_DONE delivered on retry #" + attempt
                     + " via " + (liveWs == ws ? "original" : "reconnected") + " socket");
+            releaseCommandLock();
             return;
         }
 
         if (attempt >= COMMAND_DONE_MAX_RETRIES) {
             Log.e(TAG, "[EXEC] COMMAND_DONE delivery failed after " + attempt
                     + " retries — backend will time out the run");
+            releaseCommandLock();
             return;
         }
 
         Log.w(TAG, "[EXEC] COMMAND_DONE send failed (WS down?) — retry #"
                 + (attempt + 1) + " in " + COMMAND_DONE_RETRY_MS + "ms");
-        handler.postDelayed(() -> sendCommandDoneWithRetry(event, attempt + 1),
+        scheduleStep(() -> sendCommandDoneWithRetry(event, attempt + 1),
                 COMMAND_DONE_RETRY_MS);
     }
+
+    private static void releaseCommandLock() {
+        // Keep currentExecutor set — CANCEL_COMMAND may arrive after commandDone()
+        // while the playback monitor is still running. execute() overwrites it on
+        // the next command, so there is no leak.
+        if (commandInProgress.compareAndSet(true, false)) {
+            BotForegroundService.onCommandFinished();
+        }
+    }
+
+    private static final int  STEP_EVENT_MAX_RETRIES = 20;
+    private static final long STEP_EVENT_RETRY_MS    = 500;
 
     private void sendStep(String eventType, String stepId, String stepName,
                            String reasonCode, String finalStatus) {
         JsonObject event = buildEvent(eventType, stepId, stepName, reasonCode, finalStatus);
-        if (ws != null) ws.send(event);
+        sendStepWithRetry(event, 0);
+    }
+
+    private void sendStepWithRetry(JsonObject event, int attempt) {
+        BotWebSocketClient liveWs = ws;
+        if (liveWs == null || !liveWs.isAuthenticated()) {
+            liveWs = BotForegroundService.currentWs;
+        }
+        if (liveWs != null && liveWs.isAuthenticated() && liveWs.send(event)) {
+            return;
+        }
+        if (attempt >= STEP_EVENT_MAX_RETRIES) {
+            Log.w(TAG, "[EXEC] Step event delivery failed after " + attempt + " retries: "
+                    + event.get("type").getAsString());
+            return;
+        }
+        scheduleStep(() -> sendStepWithRetry(event, attempt + 1), STEP_EVENT_RETRY_MS);
     }
 
     private JsonObject buildEvent(String eventType, String stepId, String stepName,

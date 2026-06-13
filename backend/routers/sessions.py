@@ -6,7 +6,9 @@ GET  /sessions/             — list sessions for the current user
 POST /sessions/{id}/stop    — stop a scheduled or running session
 """
 
+import json
 import logging
+import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -19,6 +21,8 @@ from backend.models.tables import Session as SessionModel, SessionTask, Task, De
 from backend.models.schemas import SessionCreate, SessionOut
 from backend.auth.security import get_current_user
 from backend.tasks.session_scheduler import scheduler
+from backend.websocket.manager import manager
+from backend.websocket.broadcaster import broadcaster
 
 logger = logging.getLogger("sessions")
 router = APIRouter(prefix="/sessions", tags=["Sessions"])
@@ -174,10 +178,30 @@ async def stop_session(
             detail=f"Session is already '{sess.status}' and cannot be stopped",
         )
 
-    sess.status = "done"
+    device_id = sess.device_id
+    sess.status = "cancelled"
     await db.commit()
 
+    # Cancel the asyncio scheduler task — wakes any sleeping wait and exits cleanly.
     scheduler.cancel(session_id)
 
-    logger.info("[SESSIONS] Session %d stopped by user %s", session_id, current_user.username)
-    return {"message": "Session stopped"}
+    # Tell the APK to abort whatever command is currently running and pause Spotify.
+    # Soft-fail — the scheduler is already stopped regardless.
+    if manager.is_connected(device_id):
+        try:
+            await manager.send_command(device_id, {
+                "type":       "CANCEL_COMMAND",
+                "session_id": session_id,
+            })
+        except Exception as exc:
+            logger.warning("[SESSIONS] CANCEL_COMMAND send failed: %s", exc)
+
+    # Push SSE so the dashboard badge flips to "cancelled" immediately.
+    await broadcaster.publish({
+        "type":       "session_status",
+        "session_id": session_id,
+        "status":     "cancelled",
+    })
+
+    logger.info("[SESSIONS] Session %d cancelled by user %s", session_id, current_user.username)
+    return {"message": "Session cancelled"}

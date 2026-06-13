@@ -27,10 +27,15 @@ Usage (called from main.py lifespan):
 
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
+
+# SQLite stores datetimes as "YYYY-MM-DD HH:MM:SS.ffffff" (space separator, no timezone).
+# Timezone-aware isoformat ("...T...+00:00") always compares LESS THAN naive strings
+# because space (0x20) < 'T' (0x54), making every device appear stale immediately.
+_SQLITE_FMT = "%Y-%m-%d %H:%M:%S.%f"
 
 logger = logging.getLogger("spotifybot")
 
@@ -68,7 +73,7 @@ async def heartbeat_loop(engine: AsyncEngine) -> None:
 
 async def _mark_stale_devices_offline(engine: AsyncEngine) -> None:
     """Mark all online devices whose last_seen is older than STALE_THRESHOLD_S."""
-    cutoff = datetime.now(timezone.utc) - timedelta(seconds=STALE_THRESHOLD_S)
+    cutoff = datetime.utcnow() - timedelta(seconds=STALE_THRESHOLD_S)
 
     async with engine.begin() as conn:
         # Fetch stale devices so we can log by name
@@ -79,7 +84,7 @@ async def _mark_stale_devices_offline(engine: AsyncEngine) -> None:
                 WHERE status = 'online'
                   AND last_seen < :cutoff
             """),
-            {"cutoff": cutoff.isoformat()},
+            {"cutoff": cutoff.strftime(_SQLITE_FMT)},
         )
         stale = result.fetchall()
 

@@ -67,6 +67,7 @@ public class PlaybackLimits {
         return reached;
     }
 
+    // Returns current in-memory hourly / daily play counts
     public static int getHourlyCount() { return hourlyCount.get(); }
     public static int getDailyCount()  { return dailyCount.get(); }
 
@@ -79,6 +80,7 @@ public class PlaybackLimits {
         Log.i(TAG, "[LIMITS] Counters reset");
     }
 
+    // Resets hourly and daily counters when their respective time windows have expired
     private static void checkAndResetWindows() {
         long now = System.currentTimeMillis();
         if (now - hourWindowStart >= ONE_HOUR) {

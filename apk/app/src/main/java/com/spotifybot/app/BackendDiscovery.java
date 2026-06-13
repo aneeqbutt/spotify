@@ -54,12 +54,62 @@ public class BackendDiscovery {
      * @param context Android context used to read/write SharedPreferences
      * @return the resolved host IP string (never null)
      */
+    /**
+     * Fast reconnect path — use after a brief disconnect (e.g. backend hot-reload).
+     * Probes the saved host with TCP (2s max).  Skips the 5–15s UDP listen window
+     * so the device re-registers within seconds of the backend coming back.
+     *
+     * @return resolved host, or null if nothing reachable (caller should run discover())
+     */
+    /**
+     * Returns true when the backend restarted since our last session (boot_id changed).
+     * Run off the main thread — blocks up to 2s on UDP.
+     */
+    public static boolean detectBackendRestart(Context context) {
+        String[] quick = tryUdpOnce(2_000);
+        if (quick == null) return false;
+        String bootId = quick[1];
+        if (bootId == null || bootId.isEmpty()) return false;
+        String savedBootId = loadBootId(context);
+        if (savedBootId != null && !savedBootId.equals(bootId)) {
+            Log.i(TAG, "[DISCOVERY] Backend restart detected (boot_id "
+                    + savedBootId + " → " + bootId + ")");
+            saveBootId(context, bootId);
+            saveHost(context, quick[0]);
+            return true;
+        }
+        saveBootId(context, bootId);
+        return false;
+    }
+
+    public static String discoverFast(Context context) {
+        String saved = loadHost(context);
+        if (saved != null && canReachTcp(saved, 8000)) {
+            Log.i(TAG, "[DISCOVERY] Fast path — saved host reachable: " + saved);
+            return saved;
+        }
+        if (canReachTcp("127.0.0.1", 8000)) {
+            Log.i(TAG, "[DISCOVERY] Fast path — ADB reverse tunnel at 127.0.0.1");
+            saveHost(context, "127.0.0.1");
+            return "127.0.0.1";
+        }
+        // One quick UDP listen (2s) — backend beacon fires every 5s
+        String[] quick = tryUdpOnce(2_000);
+        if (quick != null) {
+            Log.i(TAG, "[DISCOVERY] Fast path — UDP beacon at: " + quick[0]);
+            saveHost(context, quick[0]);
+            saveBootId(context, quick[1]);
+            return quick[0];
+        }
+        return null;
+    }
+
     public static String discover(Context context) {
         Log.i(TAG, "[DISCOVERY] Starting UDP beacon discovery (max "
                 + MAX_ATTEMPTS + " attempts × " + ATTEMPT_MS + "ms)");
 
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-            String[] result = tryUdpOnce();  // [host, boot_id] or null
+            String[] result = tryUdpOnce(ATTEMPT_MS);  // [host, boot_id] or null
             if (result != null) {
                 String host   = result[0];
                 String bootId = result[1];
@@ -92,10 +142,35 @@ public class BackendDiscovery {
             return saved;
         }
 
-        // No hardcoded fallback — returning null signals the caller to wait and retry.
-        // This ensures the APK works on ANY network without ever being wrong.
+        // Priority 3: ADB reverse tunnel — works when the phone can't reach the PC over WiFi
+        // (e.g. router AP isolation blocks WiFi client → WiFi client traffic).
+        // Running `adb reverse tcp:8000 tcp:8000` on the PC makes the phone's localhost:8000
+        // tunnel to the PC backend.  A quick TCP probe confirms the tunnel is live before
+        // committing to 127.0.0.1 so we never return a wrong host.
+        if (canReachTcp("127.0.0.1", 8000)) {
+            Log.i(TAG, "[DISCOVERY] ✅ Backend reachable via ADB reverse tunnel — using 127.0.0.1");
+            saveHost(context, "127.0.0.1");
+            return "127.0.0.1";
+        }
+
         Log.w(TAG, "[DISCOVERY] No host found and no saved host — caller must retry");
         return null;
+    }
+
+    /**
+     * Quick TCP reachability probe — opens a socket connection to host:port with a
+     * short timeout.  Does not send any data.  Returns true if the connection is
+     * accepted (port is open), false on timeout or refusal.
+     */
+    private static boolean canReachTcp(String host, int port) {
+        try (java.net.Socket s = new java.net.Socket()) {
+            s.connect(new java.net.InetSocketAddress(host, port), 2_000);
+            Log.d(TAG, "[DISCOVERY] TCP probe " + host + ":" + port + " reachable");
+            return true;
+        } catch (Exception e) {
+            Log.d(TAG, "[DISCOVERY] TCP probe " + host + ":" + port + " unreachable: " + e.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -103,9 +178,9 @@ public class BackendDiscovery {
      * Returns String[]{ host, boot_id } if a valid beacon arrives within ATTEMPT_MS,
      * or null on timeout / error.
      */
-    private static String[] tryUdpOnce() {
+    private static String[] tryUdpOnce(int timeoutMs) {
         try (DatagramSocket socket = new DatagramSocket(BEACON_PORT)) {
-            socket.setSoTimeout(ATTEMPT_MS);
+            socket.setSoTimeout(timeoutMs);
             socket.setBroadcast(true);
 
             byte[]         buf    = new byte[512];
@@ -166,6 +241,13 @@ public class BackendDiscovery {
                .edit()
                .putString(KEY_BOOT_ID, bootId)
                .apply();
+    }
+
+    /** Called from AUTH_OK so we track boot_id without UDP polling during commands. */
+    public static void saveBootIdFromAuth(Context context, String bootId) {
+        if (bootId == null || bootId.isEmpty()) return;
+        saveBootId(context, bootId);
+        Log.d(TAG, "[DISCOVERY] boot_id saved from AUTH_OK: " + bootId);
     }
 
     private static String loadBootId(Context context) {

@@ -55,40 +55,15 @@ public class FollowArtistExecutor extends SpotifyExecutor {
         stepStarted("step_open_search", "Open Search Tab");
         scheduleStepTimeout("step_open_search", STEP_TIMEOUT_MS);
 
-        AccessibilityNodeInfo tab = findByDesc("Search, Tab");
-        if (tab == null) tab = findByDesc("Search tab");
-        if (tab == null) tab = findByDesc("Search");
-
-        if (tab == null || timeoutFired) {
+        if (timeoutFired) {
             cancelStepTimeout();
-            if (!timeoutFired) { stepFailed("step_open_search", "UI_ELEMENT_NOT_FOUND"); commandDone(false); }
             return;
         }
-        boolean clicked = tapAtNodeRandom(tab);
-        tab.recycle();
+        boolean clicked = tapSearchTab();
         cancelStepTimeout();
         if (!clicked) { stepFailed("step_open_search", "CLICK_ACTION_REJECTED"); commandDone(false); return; }
         stepOk("step_open_search", "Open Search Tab");
-        handler.postDelayed(this::stepActivateSearchBar, jitteredDelay(1_500));
-    }
-
-    // ── Step 1b ───────────────────────────────────────────────────────────────
-
-    private void stepActivateSearchBar() {
-        if (timeoutFired) return;
-        AccessibilityNodeInfo searchBar = findById(SPOTIFY_PACKAGE + ":id/query");
-        if (searchBar == null) searchBar = findById(SPOTIFY_PACKAGE + ":id/search_text_field_wrapper");
-        if (searchBar == null) searchBar = findById(SPOTIFY_PACKAGE + ":id/query_text_wrapper");
-        if (searchBar == null) searchBar = findByDesc("Search for something to listen to");
-        if (searchBar == null) searchBar = findByText("What do you want to listen to?");
-        if (searchBar != null) {
-            tapAtNodeRandom(searchBar);
-            searchBar.recycle();
-            Log.i(TAG, "[EXEC] Search bar tapped — waiting for keyboard");
-        } else {
-            Log.w(TAG, "[EXEC] Search bar not found — proceeding anyway");
-        }
-        handler.postDelayed(this::stepTypeArtist, jitteredDelay(2_000));
+        scheduleStep(() -> activateSearchBar(this::stepTypeArtist), GAP_TINY);
     }
 
     // ── Step 2 ────────────────────────────────────────────────────────────────
@@ -98,10 +73,7 @@ public class FollowArtistExecutor extends SpotifyExecutor {
         stepStarted("step_type_artist", "Type Artist Name");
         scheduleStepTimeout("step_type_artist", STEP_TIMEOUT_MS);
 
-        AccessibilityNodeInfo input = findById(SPOTIFY_PACKAGE + ":id/query");
-        if (input == null) input = findById(SPOTIFY_PACKAGE + ":id/search_edittext");
-        if (input == null) input = findById(SPOTIFY_PACKAGE + ":id/search_query");
-        if (input == null) input = findByText("What do you want to listen to?");
+        AccessibilityNodeInfo input = findSearchInput();
 
         if (input == null || timeoutFired) {
             cancelStepTimeout();
@@ -113,7 +85,7 @@ public class FollowArtistExecutor extends SpotifyExecutor {
         cancelStepTimeout();
         if (!typed) { stepFailed("step_type_artist", "TEXT_INPUT_FAILED"); commandDone(false); return; }
         stepOk("step_type_artist", "Type Artist Name");
-        handler.postDelayed(this::stepTapProfile, jitteredDelay(2_000));
+        scheduleStep(this::stepTapProfile, jitteredDelay(GAP_MEDIUM));
     }
 
     // ── Step 3 ────────────────────────────────────────────────────────────────
@@ -157,7 +129,7 @@ public class FollowArtistExecutor extends SpotifyExecutor {
         if (!clicked) { stepFailed("step_tap_profile", "CLICK_ACTION_REJECTED"); commandDone(false); return; }
         stepOk("step_tap_profile", "Tap Artist Profile");
         // 6.5s base + jitter — artist page must fully render before Follow button appears
-        handler.postDelayed(this::stepTapFollow, jitteredDelay(6_500));
+        scheduleStep(this::stepTapFollow, jitteredDelay(GAP_LONG));
     }
 
     /**
@@ -278,7 +250,7 @@ public class FollowArtistExecutor extends SpotifyExecutor {
             boolean dismissed = dismissOverlays();
             Log.w(TAG, "[EXEC] Follow text not found on first try — overlay dismissed="
                     + dismissed + ", scheduling retry");
-            handler.postDelayed(this::stepTapFollowRetry, jitteredDelay(2_000));
+            scheduleStep(this::stepTapFollowRetry, jitteredDelay(GAP_MEDIUM));
             return;
         }
 
@@ -352,7 +324,7 @@ public class FollowArtistExecutor extends SpotifyExecutor {
 
         if (!clicked) { stepFailed("step_tap_follow", "CLICK_ACTION_REJECTED"); commandDone(false); return; }
         stepOk("step_tap_follow", "Tap Follow Button");
-        handler.postDelayed(this::stepVerifyFollow, jitteredDelay(2_500));
+        scheduleStep(this::stepVerifyFollow, jitteredDelay(GAP_LONG));
     }
 
     /**

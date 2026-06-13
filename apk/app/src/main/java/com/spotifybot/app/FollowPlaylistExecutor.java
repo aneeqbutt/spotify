@@ -42,39 +42,16 @@ public class FollowPlaylistExecutor extends SpotifyExecutor {
         stepStarted("step_open_search", "Open Search Tab");
         scheduleStepTimeout("step_open_search", STEP_TIMEOUT_MS);
 
-        AccessibilityNodeInfo searchTab = findByDesc("Search, Tab");
-        if (searchTab == null) searchTab = findByDesc("Search tab");
-        if (searchTab == null) searchTab = findByDesc("Search");
-
-        if (searchTab == null || timeoutFired) {
+        if (timeoutFired) {
             cancelStepTimeout();
-            if (!timeoutFired) { stepFailed("step_open_search", "UI_ELEMENT_NOT_FOUND"); commandDone(false); }
             return;
         }
 
-        boolean clicked = clickNode(searchTab);
-        searchTab.recycle();
+        boolean clicked = tapSearchTab();
         cancelStepTimeout();
         if (!clicked) { stepFailed("step_open_search", "CLICK_ACTION_REJECTED"); commandDone(false); return; }
         stepOk("step_open_search", "Open Search Tab");
-        handler.postDelayed(this::stepActivateSearchBar, 1_500);
-    }
-
-    private void stepActivateSearchBar() {
-        if (timeoutFired) return;
-        AccessibilityNodeInfo searchBar = findById(SPOTIFY_PACKAGE + ":id/query");
-        if (searchBar == null) searchBar = findById(SPOTIFY_PACKAGE + ":id/search_text_field_wrapper");
-        if (searchBar == null) searchBar = findById(SPOTIFY_PACKAGE + ":id/query_text_wrapper");
-        if (searchBar == null) searchBar = findByDesc("Search for something to listen to");
-        if (searchBar == null) searchBar = findByText("What do you want to listen to?");
-        if (searchBar != null) {
-            clickNode(searchBar);
-            searchBar.recycle();
-            Log.i(TAG, "[EXEC] Search bar tapped — waiting for keyboard");
-        } else {
-            Log.w(TAG, "[EXEC] Search bar not found in activate step — proceeding anyway");
-        }
-        handler.postDelayed(this::stepTypeQuery, 1_500);
+        scheduleStep(() -> activateSearchBar(this::stepTypeQuery), GAP_TINY);
     }
 
     // ── Step 2 ────────────────────────────────────────────────────────────────
@@ -84,10 +61,7 @@ public class FollowPlaylistExecutor extends SpotifyExecutor {
         stepStarted("step_type_query", "Type Playlist Name");
         scheduleStepTimeout("step_type_query", STEP_TIMEOUT_MS);
 
-        AccessibilityNodeInfo input = findById(SPOTIFY_PACKAGE + ":id/query");
-        if (input == null) input = findById(SPOTIFY_PACKAGE + ":id/search_edittext");
-        if (input == null) input = findById(SPOTIFY_PACKAGE + ":id/search_query");
-        if (input == null) input = findByText("What do you want to listen to?");
+        AccessibilityNodeInfo input = findSearchInput();
 
         if (input == null || timeoutFired) {
             cancelStepTimeout();
@@ -100,26 +74,14 @@ public class FollowPlaylistExecutor extends SpotifyExecutor {
         cancelStepTimeout();
         if (!typed) { stepFailed("step_type_query", "TEXT_INPUT_FAILED"); commandDone(false); return; }
         stepOk("step_type_query", "Type Playlist Name");
-        handler.postDelayed(this::stepSubmitSearch, 1_500);
+        scheduleStep(this::stepSubmitSearch, 0);
     }
 
     // ── Step 3 ────────────────────────────────────────────────────────────────
 
     private void stepSubmitSearch() {
         if (timeoutFired) return;
-        // Never use findByText(query) — it matches the search bar EditText first,
-        // clicks it, and never submits the search. Always submit via IME Enter.
-        AccessibilityNodeInfo input = findById(SPOTIFY_PACKAGE + ":id/query");
-        if (input == null) input = findById(SPOTIFY_PACKAGE + ":id/search_edittext");
-        if (input == null) input = findById(SPOTIFY_PACKAGE + ":id/search_query");
-        if (input != null) {
-            input.performAction(0x01000000); // ACTION_IME_ENTER — dismisses keyboard
-            input.recycle();
-            Log.i(TAG, "[EXEC] stepSubmitSearch: IME Enter submitted");
-        } else {
-            Log.w(TAG, "[EXEC] stepSubmitSearch: search input not found");
-        }
-        handler.postDelayed(this::stepTapPlaylistsFilter, 3_000);
+        submitSearchQuery(this::stepTapPlaylistsFilter);
     }
 
     // ── Step 4 ────────────────────────────────────────────────────────────────
@@ -167,7 +129,7 @@ public class FollowPlaylistExecutor extends SpotifyExecutor {
         playlistRow.recycle();
         if (!clicked) { stepFailed("step_tap_playlist", "CLICK_ACTION_REJECTED"); commandDone(false); return; }
         stepOk("step_tap_playlist", "Tap Playlist Result");
-        humanDelay(2_000, 3_500, this::stepTapFollow);
+        humanDelay(GAP_MEDIUM, 1_000, this::stepTapFollow);
     }
 
     private AccessibilityNodeInfo findPlaylistRow() {
@@ -235,7 +197,7 @@ public class FollowPlaylistExecutor extends SpotifyExecutor {
         if (!clicked) { stepFailed("step_tap_follow", "CLICK_ACTION_REJECTED"); commandDone(false); return; }
 
         stepOk("step_tap_follow", "Tap Follow Playlist");
-        handler.postDelayed(this::stepVerifyFollow, 2_000);
+        scheduleStep(this::stepVerifyFollow, GAP_LONG);
     }
 
     // ── Step 7 ────────────────────────────────────────────────────────────────

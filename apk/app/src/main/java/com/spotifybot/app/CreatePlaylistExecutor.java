@@ -85,7 +85,7 @@ public class CreatePlaylistExecutor extends SpotifyExecutor {
         if (!clicked) { stepFailed("step_go_to_library", "CLICK_ACTION_REJECTED"); commandDone(false); return; }
 
         stepOk("step_go_to_library", "Go to Your Library");
-        humanDelay(1_500, 2_500, this::stepTapCreatePlus);
+        humanDelay(GAP_SHORT, GAP_LONG, this::stepTapCreatePlus);
     }
 
     // ── Step 2 ────────────────────────────────────────────────────────────────
@@ -126,7 +126,7 @@ public class CreatePlaylistExecutor extends SpotifyExecutor {
         if (!clicked) { stepFailed("step_tap_create_plus", "CLICK_ACTION_REJECTED"); commandDone(false); return; }
 
         stepOk("step_tap_create_plus", "Tap + Create Button");
-        humanDelay(1_000, 2_000, this::stepSelectPlaylistType);
+        humanDelay(GAP_TINY, GAP_MEDIUM, this::stepSelectPlaylistType);
     }
 
     // ── Step 3 ────────────────────────────────────────────────────────────────
@@ -163,7 +163,7 @@ public class CreatePlaylistExecutor extends SpotifyExecutor {
         if (!clicked) { stepFailed("step_select_playlist_type", "CLICK_ACTION_REJECTED"); commandDone(false); return; }
 
         stepOk("step_select_playlist_type", "Select Playlist Type");
-        humanDelay(1_000, 2_000, this::stepEnterName);
+        humanDelay(GAP_TINY, GAP_MEDIUM, this::stepEnterName);
     }
 
     // ── Step 4 ────────────────────────────────────────────────────────────────
@@ -198,7 +198,7 @@ public class CreatePlaylistExecutor extends SpotifyExecutor {
         if (!typed) { stepFailed("step_enter_name", "TEXT_INPUT_FAILED"); commandDone(false); return; }
 
         stepOk("step_enter_name", "Enter Playlist Name");
-        handler.postDelayed(this::stepConfirm, 800);
+        scheduleStep(this::stepConfirm, GAP_SHORT);
     }
 
     // ── Step 5 ────────────────────────────────────────────────────────────────
@@ -227,7 +227,7 @@ public class CreatePlaylistExecutor extends SpotifyExecutor {
                 input.recycle();
                 Log.i(TAG, "[EXEC] No Create button found — pressed IME Enter as fallback");
                 stepOk("step_confirm", "Tap Create Button");
-                handler.postDelayed(this::stepVerify, 1_500);
+                scheduleStep(this::stepVerify, GAP_SHORT);
                 return;
             }
             stepFailed("step_confirm", "UI_ELEMENT_NOT_FOUND");
@@ -242,7 +242,7 @@ public class CreatePlaylistExecutor extends SpotifyExecutor {
         if (!clicked) { stepFailed("step_confirm", "CLICK_ACTION_REJECTED"); commandDone(false); return; }
 
         stepOk("step_confirm", "Tap Create Button");
-        handler.postDelayed(this::stepVerify, 1_500);
+        scheduleStep(this::stepVerify, GAP_SHORT);
     }
 
     // ── Step 6 ────────────────────────────────────────────────────────────────

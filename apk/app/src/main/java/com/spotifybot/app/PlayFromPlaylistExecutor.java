@@ -1,10 +1,12 @@
 package com.spotifybot.app;
 
+import android.graphics.Rect;
 import android.util.Log;
 import android.view.accessibility.AccessibilityNodeInfo;
 
 import com.google.gson.JsonObject;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -27,9 +29,18 @@ public class PlayFromPlaylistExecutor extends SpotifyExecutor {
     private String query;
     private int dailyLimit;
     private int hourlyLimit;
+    /** Like/skip counts from the dashboard form — performed after playback starts. */
+    private int likeTarget;
+    private int skipTarget;
 
     /** Retry counter for stepTapPlay */
-    private int playBtnAttempts = 0;
+    private int     playBtnAttempts           = 0;
+    private int     resultScrollCount         = 0;
+    private int     playlistsFilterAttempts   = 0;
+    /** True once the Playlists filter chip is confirmed. */
+    private boolean playlistFilterApplied     = false;
+
+    private static final int MAX_PLAYLISTS_FILTER_ATTEMPTS = 12;
 
     @Override
     protected void doExecute(JsonObject params) {
@@ -41,6 +52,11 @@ public class PlayFromPlaylistExecutor extends SpotifyExecutor {
         }
         dailyLimit  = params.has("daily_limit")  ? params.get("daily_limit").getAsInt()  : 0;
         hourlyLimit = params.has("hourly_limit") ? params.get("hourly_limit").getAsInt() : 0;
+        likeTarget  = params.has("likes")        ? params.get("likes").getAsInt()        : 0;
+        skipTarget  = params.has("skips")        ? params.get("skips").getAsInt()        : 0;
+        resultScrollCount       = 0;
+        playlistsFilterAttempts = 0;
+        playlistFilterApplied   = false;
 
         if (PlaybackLimits.isDailyLimitReached(dailyLimit)) {
             stepFailed("step_open_search", "DAILY_LIMIT_REACHED");
@@ -53,7 +69,8 @@ public class PlayFromPlaylistExecutor extends SpotifyExecutor {
             return;
         }
 
-        Log.i(TAG, "[EXEC] PlayFromPlaylist START | query=" + query);
+        Log.i(TAG, "[EXEC] PlayFromPlaylist START | query=" + query
+                + " | likes=" + likeTarget + " skips=" + skipTarget);
         launchAndSettle(this::stepOpenSearch);
     }
 
@@ -63,146 +80,203 @@ public class PlayFromPlaylistExecutor extends SpotifyExecutor {
         stepStarted("step_open_search", "Open Search Tab");
         scheduleStepTimeout("step_open_search", STEP_TIMEOUT_MS);
 
-        AccessibilityNodeInfo searchTab = findByDesc("Search, Tab");
-        if (searchTab == null) searchTab = findByDesc("Search tab");
-        if (searchTab == null) searchTab = findByDesc("Search");
-
-        if (searchTab == null || timeoutFired) {
+        if (timeoutFired) {
             cancelStepTimeout();
-            if (!timeoutFired) { stepFailed("step_open_search", "UI_ELEMENT_NOT_FOUND"); commandDone(false); }
             return;
         }
 
-        boolean clicked = clickNode(searchTab);
-        searchTab.recycle();
+        boolean clicked = tapSearchTab();
         cancelStepTimeout();
         if (!clicked) { stepFailed("step_open_search", "CLICK_ACTION_REJECTED"); commandDone(false); return; }
         stepOk("step_open_search", "Open Search Tab");
-        handler.postDelayed(this::stepActivateSearchBar, 1_500);
-    }
-
-    private void stepActivateSearchBar() {
-        if (timeoutFired) return;
-        AccessibilityNodeInfo searchBar = findById(SPOTIFY_PACKAGE + ":id/query");
-        if (searchBar == null) searchBar = findById(SPOTIFY_PACKAGE + ":id/search_text_field_wrapper");
-        if (searchBar == null) searchBar = findById(SPOTIFY_PACKAGE + ":id/query_text_wrapper");
-        if (searchBar == null) searchBar = findByDesc("Search for something to listen to");
-        if (searchBar == null) searchBar = findByText("What do you want to listen to?");
-        if (searchBar != null) {
-            clickNode(searchBar);
-            searchBar.recycle();
-            Log.i(TAG, "[EXEC] Search bar tapped — waiting for keyboard");
-        } else {
-            Log.w(TAG, "[EXEC] Search bar not found in activate step — proceeding anyway");
-        }
-        handler.postDelayed(this::stepTypeQuery, 1_500);
+        scheduleStep(() -> activateSearchBar(this::stepTypeQuery), GAP_TINY);
     }
 
     // ── Step 2 ────────────────────────────────────────────────────────────────
 
     private void stepTypeQuery() {
         if (timeoutFired) return;
-        stepStarted("step_type_query", "Type Playlist Name");
-        scheduleStepTimeout("step_type_query", STEP_TIMEOUT_MS);
-
-        AccessibilityNodeInfo input = findById(SPOTIFY_PACKAGE + ":id/query");
-        if (input == null) input = findById(SPOTIFY_PACKAGE + ":id/search_edittext");
-        if (input == null) input = findById(SPOTIFY_PACKAGE + ":id/search_query");
-        if (input == null) input = findByText("What do you want to listen to?");
-
-        if (input == null || timeoutFired) {
-            cancelStepTimeout();
-            if (!timeoutFired) { stepFailed("step_type_query", "UI_ELEMENT_NOT_FOUND"); commandDone(false); }
-            return;
-        }
-
-        boolean typed = typeText(input, query);
-        input.recycle();
-        cancelStepTimeout();
-        if (!typed) { stepFailed("step_type_query", "TEXT_INPUT_FAILED"); commandDone(false); return; }
-        stepOk("step_type_query", "Type Playlist Name");
-        handler.postDelayed(this::stepSubmitSearch, 1_500);
+        runTypeQueryStep("step_type_query", "Type Playlist Name", query,
+                () -> scheduleStep(this::stepSubmitSearch, 0));
     }
 
     // ── Step 3 ────────────────────────────────────────────────────────────────
 
     private void stepSubmitSearch() {
         if (timeoutFired) return;
-
-        // Always submit via IME Enter → full results page → findPlaylistRow() handles matching.
-        // NEVER use findByText(query) or findByText("Playlist") — too broad, matches filter
-        // chips and other UI text, causing wrong taps.
-        AccessibilityNodeInfo input = findById(SPOTIFY_PACKAGE + ":id/query");
-        if (input == null) input = findById(SPOTIFY_PACKAGE + ":id/search_edittext");
-        if (input == null) input = findById(SPOTIFY_PACKAGE + ":id/search_query");
-        if (input != null) {
-            input.performAction(0x01000000); // ACTION_IME_ENTER — dismisses keyboard + shows results
-            input.recycle();
-            Log.i(TAG, "[EXEC] IME Enter submitted — waiting for results");
-        } else {
-            Log.w(TAG, "[EXEC] Search input not found for IME Enter");
-        }
-        handler.postDelayed(this::stepTapPlaylistsFilter, 3_000);
+        submitSearchQuery(this::stepTapPlaylistsFilter);
     }
 
     // ── Step 4 ────────────────────────────────────────────────────────────────
 
     private void stepTapPlaylistsFilter() {
         if (timeoutFired) return;
-        stepStarted("step_tap_filter", "Tap Playlists Filter");
-        scheduleStepTimeout("step_tap_filter", STEP_TIMEOUT_MS);
 
-        AccessibilityNodeInfo playlistsChip = findByText("Playlists");
-        if (playlistsChip == null) playlistsChip = findByDesc("Playlists");
-
-        cancelStepTimeout();
-        if (timeoutFired) return;
-
-        if (playlistsChip != null) {
-            clickNode(playlistsChip);
-            playlistsChip.recycle();
-            Log.i(TAG, "[EXEC] Playlists filter applied");
-        } else {
-            Log.w(TAG, "[EXEC] Playlists filter chip not found — continuing without filter");
+        if (playlistsFilterAttempts == 0) {
+            stepStarted("step_tap_filter", "Tap Playlists Tab");
+            scheduleStepTimeout("step_tap_filter", 25_000);
         }
-        stepOk("step_tap_filter", "Tap Playlists Filter");
-        humanDelay(this::stepTapPlaylistResult);
-    }
+        playlistsFilterAttempts++;
 
-    // ── Step 5 ────────────────────────────────────────────────────────────────
-
-    private void stepTapPlaylistResult() {
-        if (timeoutFired) return;
-        stepStarted("step_tap_playlist", "Tap Playlist Result");
-        scheduleStepTimeout("step_tap_playlist", STEP_TIMEOUT_MS);
-
-        AccessibilityNodeInfo playlistRow = findPlaylistRow();
-        cancelStepTimeout();
-        if (timeoutFired) return;
-
-        if (playlistRow == null) {
-            stepFailed("step_tap_playlist", "UI_ELEMENT_NOT_FOUND");
+        AccessibilityNodeInfo chip = findChipLabelNode("Playlists");
+        if (chip == null) {
+            if (playlistsFilterAttempts == 4 || playlistsFilterAttempts == 8) {
+                Log.w(TAG, "[EXEC] Playlists chip missing — re-submitting search (attempt "
+                        + playlistsFilterAttempts + ")");
+                submitSearchQuery(() -> scheduleStep(this::stepTapPlaylistsFilter, GAP_MEDIUM));
+                return;
+            }
+            if (playlistsFilterAttempts < MAX_PLAYLISTS_FILTER_ATTEMPTS) {
+                Log.i(TAG, "[EXEC] Playlists chip not on screen yet — retry "
+                        + playlistsFilterAttempts + "/" + MAX_PLAYLISTS_FILTER_ATTEMPTS);
+                scheduleStep(this::stepTapPlaylistsFilter, GAP_SHORT);
+                return;
+            }
+            cancelStepTimeout();
+            if (timeoutFired) return;
+            stepFailed("step_tap_filter", "UI_ELEMENT_NOT_FOUND");
             commandDone(false);
             return;
         }
 
-        Log.i(TAG, "[EXEC] Tapping playlist row: desc='" + playlistRow.getContentDescription() + "'");
-        boolean clicked = playlistRow.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+        if (isFilterChipSelected(chip)) {
+            chip.recycle();
+            finishPlaylistsFilterStep();
+            return;
+        }
+        chip.recycle();
+
+        if (!ensureFilterChipVisible("Playlists")) {
+            scheduleStep(this::stepTapPlaylistsFilter, GAP_SHORT);
+            return;
+        }
+
+        if (!tapFilterChipByLabel("Playlists")) {
+            if (playlistsFilterAttempts < MAX_PLAYLISTS_FILTER_ATTEMPTS) {
+                scheduleStep(this::stepTapPlaylistsFilter, GAP_SHORT);
+                return;
+            }
+            cancelStepTimeout();
+            stepFailed("step_tap_filter", "CLICK_ACTION_REJECTED");
+            commandDone(false);
+            return;
+        }
+        scheduleStep(this::verifyPlaylistsFilterSelected, jitteredDelay(GAP_LONG));
+    }
+
+    private void verifyPlaylistsFilterSelected() {
+        if (timeoutFired) return;
+
+        AccessibilityNodeInfo chip = findChipLabelNode("Playlists");
+        if (chip != null && isFilterChipSelected(chip)) {
+            chip.recycle();
+            finishPlaylistsFilterStep();
+            return;
+        }
+        if (chip != null) chip.recycle();
+
+        if (playlistsFilterAttempts >= 2 && hasAnyPlaylistResultRow()) {
+            Log.i(TAG, "[EXEC] Playlists filter verified via playlist result rows");
+            finishPlaylistsFilterStep();
+            return;
+        }
+
+        if (playlistsFilterAttempts < MAX_PLAYLISTS_FILTER_ATTEMPTS) {
+            Log.w(TAG, "[EXEC] Playlists chip not selected yet — re-tapping (attempt "
+                    + playlistsFilterAttempts + ")");
+            scheduleStep(this::stepTapPlaylistsFilter, GAP_SHORT);
+            return;
+        }
+
+        cancelStepTimeout();
+        if (timeoutFired) return;
+        stepFailed("step_tap_filter", "FILTER_NOT_APPLIED");
+        commandDone(false);
+    }
+
+    private void finishPlaylistsFilterStep() {
+        cancelStepTimeout();
+        if (timeoutFired) return;
+        playlistFilterApplied = true;
+        stepOk("step_tap_filter", "Tap Playlists Tab");
+        Log.i(TAG, "[EXEC] Playlists filter confirmed — proceeding to result tap");
+        scheduleStep(this::stepTapPlaylistResult, jitteredDelay(GAP_SHORT));
+    }
+
+    private boolean hasAnyPlaylistResultRow() {
+        SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;
+        if (svc == null) return false;
+        AccessibilityNodeInfo root = svc.getRootInActiveWindow();
+        if (root == null) return false;
+        List<AccessibilityNodeInfo> titles = root.findAccessibilityNodeInfosByViewId(
+                SPOTIFY_PACKAGE + ":id/title");
+        root.recycle();
+        if (titles == null) return false;
+        for (AccessibilityNodeInfo titleNode : titles) {
+            if (titleNode == null) continue;
+            AccessibilityNodeInfo parent = titleNode.getParent();
+            titleNode.recycle();
+            if (parent == null) continue;
+            boolean playlist = hasPlaylistSubtitle(parent) && !hasSongSubtitle(parent);
+            parent.recycle();
+            if (playlist) return true;
+        }
+        return false;
+    }
+
+    // ── Step 5 ────────────────────────────────────────────────────────────────
+
+    private static final int MAX_RESULT_SCROLLS = 4;
+
+    private void stepTapPlaylistResult() {
+        if (timeoutFired) return;
+
+        if (resultScrollCount == 0) {
+            stepStarted("step_tap_playlist", "Tap Playlist Result");
+            scheduleStepTimeout("step_tap_playlist", STEP_TIMEOUT_MS);
+        }
+
+        AccessibilityNodeInfo playlistRow = findPlaylistRow();
+
+        if (playlistRow == null) {
+            if (resultScrollCount < MAX_RESULT_SCROLLS) {
+                resultScrollCount++;
+                Log.i(TAG, "[EXEC] Playlist not found — scrolling down ("
+                        + resultScrollCount + "/" + MAX_RESULT_SCROLLS + ")");
+                scrollResultsList();
+                scheduleStep(this::stepTapPlaylistResult, GAP_MEDIUM);
+                return;
+            }
+            cancelStepTimeout();
+            if (timeoutFired) return;
+            Log.e(TAG, "[EXEC] findPlaylistRow: no row after " + MAX_RESULT_SCROLLS + " scrolls");
+            stepFailed("step_tap_playlist", "UI_ELEMENT_NOT_FOUND");
+            commandDone(false);
+            resultScrollCount = 0;
+            return;
+        }
+
+        cancelStepTimeout();
+        if (timeoutFired) { playlistRow.recycle(); return; }
+
+        Log.i(TAG, "[EXEC] Tapping playlist row (scroll=" + resultScrollCount + "): desc='"
+                + playlistRow.getContentDescription() + "'");
+        boolean clicked = tapAtNodeRandom(playlistRow);
         if (!clicked) {
             AccessibilityNodeInfo gp = playlistRow.getParent();
             if (gp != null) {
                 clicked = gp.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                Log.i(TAG, "[EXEC] playlistRow self-click failed — tried grandparent: " + clicked);
+                Log.i(TAG, "[EXEC] playlistRow tap failed — tried grandparent: " + clicked);
                 gp.recycle();
             }
-        } else {
-            Log.i(TAG, "[EXEC] playlistRow self-click succeeded");
         }
         playlistRow.recycle();
+        resultScrollCount = 0;
+
         if (!clicked) { stepFailed("step_tap_playlist", "CLICK_ACTION_REJECTED"); commandDone(false); return; }
         stepOk("step_tap_playlist", "Tap Playlist Result");
         playBtnAttempts = 0;
-        humanDelay(4_000, 6_000, this::stepTapPlay);
+        waitForCollectionPlayButton(this::stepTapPlay);
     }
 
     /**
@@ -233,7 +307,6 @@ public class PlayFromPlaylistExecutor extends SpotifyExecutor {
         }
 
         String queryLower = query.toLowerCase();
-        AccessibilityNodeInfo fallback = null;
 
         for (int i = 0; i < titles.size(); i++) {
             AccessibilityNodeInfo titleNode = titles.get(i);
@@ -251,26 +324,26 @@ public class PlayFromPlaylistExecutor extends SpotifyExecutor {
             titleNode.recycle();
             if (parent == null) continue;
 
-            if (hasPlaylistSubtitle(parent)) {
-                if (fallback != null) fallback.recycle();
+            boolean isPlaylist = hasPlaylistSubtitle(parent)
+                    || (playlistFilterApplied && !hasSongSubtitle(parent)
+                    && !looksLikeSongTitle(text));
+            Log.d(TAG, "[EXEC] findPlaylistRow: title='" + text + "' filterApplied=" + playlistFilterApplied
+                    + " isPlaylist=" + isPlaylist);
+
+            if (isPlaylist) {
                 for (int j = i + 1; j < titles.size(); j++) {
                     AccessibilityNodeInfo rem = titles.get(j);
                     if (rem != null) rem.recycle();
                 }
-                Log.i(TAG, "[EXEC] findPlaylistRow: confirmed via id/title + 'Playlist •' subtitle");
+                Log.i(TAG, "[EXEC] findPlaylistRow: match confirmed");
                 return parent;
             }
 
-            if (fallback == null) {
-                fallback = parent;
-            } else {
-                parent.recycle();
-            }
+            parent.recycle();
         }
 
-        if (fallback != null) Log.w(TAG, "[EXEC] findPlaylistRow: using title-only fallback");
-        else Log.w(TAG, "[EXEC] findPlaylistRow: no id/title matching query='" + query + "'");
-        return fallback;
+        Log.w(TAG, "[EXEC] findPlaylistRow: no playlist row found for query='" + query + "'");
+        return null;
     }
 
     /**
@@ -312,24 +385,17 @@ public class PlayFromPlaylistExecutor extends SpotifyExecutor {
         //   android.widget.ImageView  id/button_play_and_pause  clickable=FALSE
         //   parent: android.widget.Button  (clickable — absorbs the click)
         // Use clickFollowNode which tries ACTION_CLICK on node then walks up to parent Button.
-        AccessibilityNodeInfo playBtn = findById(SPOTIFY_PACKAGE + ":id/button_play_and_pause");
-        if (playBtn == null) playBtn = findById(SPOTIFY_PACKAGE + ":id/play_button");
-        if (playBtn == null) playBtn = findById(SPOTIFY_PACKAGE + ":id/shuffle_button");
-        if (playBtn == null) playBtn = findById(SPOTIFY_PACKAGE + ":id/btn_play");
-        if (playBtn == null) playBtn = findById(SPOTIFY_PACKAGE + ":id/header_play_pause_btn");
-        if (playBtn == null) playBtn = findByDesc("Shuffle play");
-        if (playBtn == null) playBtn = findByDesc("Shuffle Play");
-        if (playBtn == null) playBtn = findByDesc("Play"); // broadest — checked last
+        AccessibilityNodeInfo playBtn = findCollectionPlayButton();
 
         cancelStepTimeout();
         if (timeoutFired) return;
 
         if (playBtn == null) {
             playBtnAttempts++;
-            if (playBtnAttempts <= 2) {
-                // Playlist page may not have fully rendered yet — retry after 2.5s
-                Log.w(TAG, "[EXEC] Play button not found — retry attempt " + playBtnAttempts + "/2 in 2500ms");
-                handler.postDelayed(this::stepTapPlay, 2_500);
+            if (playBtnAttempts <= 5) {
+                Log.w(TAG, "[EXEC] Play button not found — retry attempt "
+                        + playBtnAttempts + "/5 in 300ms");
+                scheduleStep(this::stepTapPlay, GAP_SHORT);
                 return;
             }
             // After 2 retries still not found — hard fail so we can diagnose
@@ -345,7 +411,7 @@ public class PlayFromPlaylistExecutor extends SpotifyExecutor {
         playBtn.recycle();
         if (!clicked) { stepFailed("step_tap_play", "CLICK_ACTION_REJECTED"); commandDone(false); return; }
         stepOk("step_tap_play", "Tap Play on Playlist");
-        handler.postDelayed(this::stepVerifyPlayback, 2_500);
+        scheduleStep(this::stepVerifyPlayback, GAP_SHORT);
     }
 
     // ── Step 7 ────────────────────────────────────────────────────────────────
@@ -370,13 +436,36 @@ public class PlayFromPlaylistExecutor extends SpotifyExecutor {
         } else {
             Log.w(TAG, "[EXEC] Now Playing bar not found — soft success");
         }
+
+        // Spotify's Shuffle Play / Play button on the playlist page can land in a
+        // "ready but paused" state — the Now Playing bar appears but the track
+        // hasn't actually started.  If the now-playing play/pause button shows
+        // "Play" (not "Pause"), tap it here to force the track to start before
+        // the monitor begins watching.
+        AccessibilityNodeInfo playBtn =
+                findById(SPOTIFY_PACKAGE + ":id/nowplaying_elements_playpause_button");
+        if (playBtn != null) {
+            CharSequence cd = playBtn.getContentDescription();
+            if (cd != null && cd.toString().startsWith("Play")) {
+                Log.i(TAG, "[EXEC] Playlist track paused at verify step — tapping Play to start");
+                tapAtNodeRandom(playBtn);
+            }
+            playBtn.recycle();
+        }
+
         stepOk("step_verify_play", "Verify Playback");
         // Capture runId before commandDone() — monitor uses it for PLAYBACK_FINISHED.
-        String monitorRunId = runId;
-        commandDone(true);
-        // After playlist starts, poll position_text vs duration_text and notify the
-        // backend when the first track finishes so the next session task fires at
-        // the right time instead of immediately.
-        startPlaybackMonitor(monitorRunId);
+        final String monitorRunId = runId;
+
+        // Spread the requested likes/skips across playback (human-paced), THEN finish.
+        // Same choreography the album executor uses; soft-fails individual actions so a
+        // missing like/skip never fails the whole play command. No-op when both are 0.
+        runLikeSkipChoreography(likeTarget, skipTarget, () -> {
+            commandDone(true);
+            // After playlist starts, poll position_text vs duration_text and notify the
+            // backend when the first track finishes so the next session task fires at
+            // the right time instead of immediately.
+            startPlaybackMonitor(monitorRunId);
+        });
     }
 }

@@ -1,4 +1,4 @@
-package com.spotifybot.app;
+    package com.spotifybot.app;
 
 import android.content.Context;
 import android.os.Handler;

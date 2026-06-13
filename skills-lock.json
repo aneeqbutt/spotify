@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "skills": {
+    "SQLite Database Expert": {
+      "source": "martinholovsky/claude-skills-generator",
+      "sourceType": "github",
+      "skillPath": "skills/sqlite/SKILL.md",
+      "computedHash": "515e1971f145631025485c6dbf83c62bb7ee0fabc805d0e2bd07ac2aac7f24d8"
+    },
+    "android-java": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "skillPath": "skills/android-java/SKILL.md",
+      "computedHash": "4254288b2eecd827da5c810ac8c04d6f69c3cdce9658b8c61ad96a7fccc11d30"
+    },
+    "api-authentication": {
+      "source": "aj-geddes/useful-ai-prompts",
+      "sourceType": "github",
+      "skillPath": "skills/api-authentication/SKILL.md",
+      "computedHash": "da093972b72908b941d2255e1b717292cb5220d850efbb38e80b0e38bd6072f9"
+    },
+    "architecture-diagrams": {
+      "source": "aj-geddes/useful-ai-prompts",
+      "sourceType": "github",
+      "skillPath": "skills/architecture-diagrams/SKILL.md",
+      "computedHash": "f324df48ef5583e3ac57bdb1354506cffbe95c4d5d115a47fb7d05dd2e33a719"
+    },
+    "background-job-orchestrator": {
+      "source": "erichowens/some_claude_skills",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/background-job-orchestrator/SKILL.md",
+      "computedHash": "f7e330c9acb1525cb8a56b3cb0e4adbe2261488c0bd957ec21fe428f0f5c8c21"
+    },
+    "codebase-documenter": {
+      "source": "mhattingpete/claude-skills-marketplace",
+      "sourceType": "github",
+      "skillPath": "productivity-skills-plugin/skills/codebase-documenter/SKILL.md",
+      "computedHash": "854380972d0589f7c82bdb7630b76ef61f65d96b77f8a7c3f5c2efe9be1720e8"
+    },
+    "documentation-production": {
+      "source": "nickcrew/claude-ctx-plugin",
+      "sourceType": "github",
+      "skillPath": "skills/documentation-production/SKILL.md",
+      "computedHash": "1fab2723910992e163365a1f54334e8470c55d7a7bf90c11cb20d140aaa59a35"
+    },
+    "fastapi-python": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "fastapi-python/SKILL.md",
+      "computedHash": "4521c6090735152b7b8df670cefe5c1c6d1dcaa115de67bb96e74ebf802d4f24"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "computedHash": "9e1c8b3103f92fa8092568a44fe64858de7c5c9dc65ce4bea8f168080e889cfd"
+    },
+    "logging-observability": {
+      "source": "erichowens/some_claude_skills",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/logging-observability/SKILL.md",
+      "computedHash": "d640d1eb4a03339dbfb6267040ce7fdbc6dd0da7695c5a7a960f41da0b7108ff"
+    },
+    "mermaid-diagrams": {
+      "source": "davila7/claude-code-templates",
+      "sourceType": "github",
+      "skillPath": "cli-tool/components/skills/creative-design/mermaid-diagrams/SKILL.md",
+      "computedHash": "8f59e878e4ecdb6205c968dc6eb92aca1d1d5c949ce4dfd8cef06208bffbc10b"
+    },
+    "react-vite-expert": {
+      "source": "questfortech-investments/claude-code-skills",
+      "sourceType": "github",
+      "skillPath": "react-vite-expert/SKILL.md",
+      "computedHash": "df813e27fae6b3566de7742885239041c2de2e50cfbca11708a16e6e8cf9e65b"
+    },
+    "real-time-features": {
+      "source": "aj-geddes/useful-ai-prompts",
+      "sourceType": "github",
+      "skillPath": "skills/real-time-features/SKILL.md",
+      "computedHash": "8269a0097b3d7a907ac95cc6924f73dae6626befc3d267384d374d4bb8a74a74"
+    },
+    "websocket": {
+      "source": "martinholovsky/claude-skills-generator",
+      "sourceType": "github",
+      "skillPath": "skills/websocket/SKILL.md",
+      "computedHash": "ae58edcb9a4ab77ff557fa77be86a37844d15cb47dde99eb8605ed6714f7ceb3"
+    }
+  }
+}

@@ -132,7 +132,11 @@ async def run_now(
                    "Wait for the device to reconnect and try again."
         )
 
-    logger.info(f"[CMD] Run dispatched: run_id={run_id} task={task.action_type} device={body.device_id}")
+    query = params.get("query") or params.get("artist_name") or params.get("playlist_name")
+    logger.info(
+        f"[CMD] Run dispatched: run_id={run_id} task={task.action_type} "
+        f"query={query!r} device={body.device_id}"
+    )
     return {
         "run_id": run_id,
         "task_id": task.id,

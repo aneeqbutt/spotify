@@ -33,6 +33,8 @@ class ConnectionManager:
     def __init__(self):
         # device_id → WebSocket (only one connection per device at a time)
         self._connections: dict[str, WebSocket] = {}
+        # Pending offline grace timers — cancelled when the device reconnects
+        self._offline_tasks: dict[str, asyncio.Task] = {}
         self._engine: AsyncEngine | None = None
 
     def init(self, engine: AsyncEngine) -> None:
@@ -61,6 +63,10 @@ class ConnectionManager:
                 pass  # already closed — safe to ignore
 
         self._connections[device_id] = websocket
+
+        # Device is back — cancel any pending offline broadcast from a brief drop
+        # (e.g. uvicorn --reload closes all sockets then the APK reconnects).
+        self._cancel_offline_task(device_id)
 
         # Mark device online in DB
         await self._set_device_status(device_id, "online", db)
@@ -96,7 +102,9 @@ class ConnectionManager:
         # Grace period — APKs often reconnect within 1-2s on brief drops.
         # We fire a background task so the original (soon-to-be-closed) db session
         # is NOT used after the sleep — we create a fresh session for the delayed update.
-        asyncio.create_task(self._delayed_offline(device_id))
+        self._cancel_offline_task(device_id)
+        task = asyncio.create_task(self._delayed_offline(device_id))
+        self._offline_tasks[device_id] = task
 
     # ── Messaging ─────────────────────────────────────────────────────────────
 
@@ -111,25 +119,31 @@ class ConnectionManager:
         caller can immediately mark the run FAILED instead of leaving it stuck
         in RUNNING state until the 5-minute expiry fires.
         """
-        ws = self._connections.get(device_id)
-        if not ws:
-            logger.warning(f"[WS] Cannot send command — device offline: {device_id}")
-            return False
+        message = json.dumps(payload)
+        for attempt in range(3):
+            ws = self._connections.get(device_id)
+            if not ws:
+                if attempt < 2:
+                    await asyncio.sleep(0.4)
+                    continue
+                logger.warning(f"[WS] Cannot send command — device offline: {device_id}")
+                return False
 
-        try:
-            # 5s timeout prevents a hung WebSocket from blocking the entire request.
-            # A healthy connection delivers instantly; if it takes >5s the socket is dead.
-            await asyncio.wait_for(ws.send_text(json.dumps(payload)), timeout=5.0)
-            logger.info(f"[WS] Command sent to {device_id}: {payload.get('action_type')}")
-            return True
-        except asyncio.TimeoutError:
-            logger.error(f"[WS] Send timed out for {device_id} — removing stale connection")
-            self._connections.pop(device_id, None)
-            return False
-        except Exception as exc:
-            logger.error(f"[WS] Send failed for {device_id} — removing stale connection: {exc}")
-            self._connections.pop(device_id, None)
-            return False
+            try:
+                await asyncio.wait_for(ws.send_text(message), timeout=5.0)
+                logger.info(f"[WS] Command sent to {device_id}: {payload.get('action_type')}")
+                return True
+            except asyncio.TimeoutError:
+                logger.error(f"[WS] Send timed out for {device_id} (attempt {attempt + 1}/3)")
+                self._connections.pop(device_id, None)
+            except Exception as exc:
+                logger.error(f"[WS] Send failed for {device_id} (attempt {attempt + 1}/3): {exc}")
+                self._connections.pop(device_id, None)
+
+            if attempt < 2:
+                await asyncio.sleep(0.4)
+
+        return False
 
     async def force_disconnect(self, device_id: str) -> None:
         """
@@ -152,9 +166,11 @@ class ConnectionManager:
                 pass  # already dead — fine
             logger.warning(f"[WS] Force-closed zombie connection: {device_id}")
 
-        # Schedule the offline DB update + SSE broadcast immediately (no grace period).
-        # A genuine reconnect will re-add the device before this fires.
-        asyncio.create_task(self._delayed_offline(device_id, grace_s=5))
+        # Schedule the offline DB update + SSE broadcast with a short grace period.
+        # A genuine reconnect will re-add the device and cancel this task.
+        self._cancel_offline_task(device_id)
+        task = asyncio.create_task(self._delayed_offline(device_id, grace_s=5))
+        self._offline_tasks[device_id] = task
 
     async def broadcast(self, payload: dict):
         """Send a message to ALL connected devices (used for system-wide events)."""
@@ -171,7 +187,13 @@ class ConnectionManager:
     def connected_devices(self) -> list[str]:
         return list(self._connections.keys())
 
-    async def _delayed_offline(self, device_id: str, grace_s: int = 10) -> None:
+    def _cancel_offline_task(self, device_id: str) -> None:
+        """Cancel a pending grace-period offline task for this device."""
+        task = self._offline_tasks.pop(device_id, None)
+        if task is not None and not task.done():
+            task.cancel()
+
+    async def _delayed_offline(self, device_id: str, grace_s: int = 15) -> None:
         """
         Background task: wait grace_s seconds, then mark device offline if it
         hasn't reconnected. Uses a fresh engine session — safe to call after
@@ -181,7 +203,13 @@ class ConnectionManager:
         exponential-backoff reconnect (1s → 2s → 4s) before the dashboard
         shows the device as offline, avoiding dashboard flicker on brief drops.
         """
-        await asyncio.sleep(grace_s)
+        try:
+            await asyncio.sleep(grace_s)
+        except asyncio.CancelledError:
+            logger.info(f"[WS] Offline grace cancelled for {device_id} — device reconnected")
+            return
+        finally:
+            self._offline_tasks.pop(device_id, None)
 
         if device_id in self._connections:
             logger.info(f"[WS] Device {device_id} reconnected in grace period — offline suppressed")

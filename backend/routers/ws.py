@@ -140,24 +140,24 @@ async def websocket_endpoint(
         await manager.connect(device_id, websocket, db)
         authenticated = True
 
-        await websocket.send_text(json.dumps({"type": "AUTH_OK", "device_id": device_id}))
+        from backend.main import _SERVER_BOOT_ID
+        await websocket.send_text(json.dumps({
+            "type":      "AUTH_OK",
+            "device_id": device_id,
+            "boot_id":   _SERVER_BOOT_ID,
+        }))
         logger.info(f"[WS] DEVICE_HELLO accepted: {device_id} "
                     f"v={device.app_version} caps={device.capabilities}")
 
         # ── Step 5: Event listening loop ──────────────────────────────────────
-        # 90s receive timeout — APK sends a PING every 30s, so missing 3 pings
-        # means the connection is dead. Without this, a hard phone crash (SIGKILL,
-        # battery out) leaves the server blocked on receive_text() forever.
+        # 120s receive timeout — APK sends a PING every 15s on a dedicated thread.
+        # Without this, a hard phone crash (SIGKILL, battery out) leaves the server
+        # blocked on receive_text() forever.
         while True:
             try:
-                # 90s timeout — APK sends app-level PING every 30s, so 90s = 3 missed
-                # pings before we declare the connection dead.  This is still generous
-                # enough to survive Samsung deep-sleep cycles while being fast enough
-                # to detect a hard crash (battery pull, SIGKILL) in under 2 minutes.
-                # The previous 300s value left zombie connections for 5+ minutes.
-                raw = await asyncio.wait_for(websocket.receive_text(), timeout=90.0)
+                raw = await asyncio.wait_for(websocket.receive_text(), timeout=120.0)
             except asyncio.TimeoutError:
-                logger.warning(f"[WS] {device_id}: no message in 90s — closing dead connection")
+                logger.warning(f"[WS] {device_id}: no message in 120s — closing dead connection")
                 break
             try:
                 msg = json.loads(raw)
@@ -242,10 +242,20 @@ async def websocket_endpoint(
                     # The broadcaster fans it out to every subscribed queue — one per
                     # open dashboard tab. The frontend appends it to the run log in real
                     # time without waiting for the next 2s poll cycle.
+                    #
+                    # session_id is included for runs dispatched by the session scheduler
+                    # (None for manual Run Now).  The dashboard uses it to re-associate
+                    # run_events when the session_run SSE event was missed (brief reconnect
+                    # between task dispatches causes the dashboard to stay on the old run_id
+                    # and silently discard all events for the new run).
+                    from backend.tasks.session_scheduler import get_session_id_for_run
+                    session_id_for_run = get_session_id_for_run(run_id)
+
                     now_iso = datetime.now(timezone.utc).isoformat()
                     await broadcaster.publish({
                         "type":        "run_event",
                         "run_id":      run_id,
+                        "session_id":  session_id_for_run,
                         "event_type":  msg_type,
                         "step_id":     msg.get("step_id"),
                         "step_name":   msg.get("step_name"),
@@ -270,11 +280,15 @@ async def websocket_endpoint(
         # ── Step 6: Cleanup ───────────────────────────────────────────────────
         if authenticated:
             await manager.disconnect(device_id, db, websocket)
-            # Only fail runs if the device has NOT already reconnected.
-            # Without this guard, a brief disconnect followed by immediate
-            # reconnect would kill a run that is still executing on the new socket.
+            # Only fail runs if the device has NOT reconnected within a short grace.
+            # Brief drops during automation (accessibility flood, WiFi hiccup) should
+            # not kill a run that is still executing on the phone.
+            # 30s grace — automation can briefly drop WS while Spotify is foregrounded;
+            # the APK defers reconnect until the command finishes.
             if not manager.is_connected(device_id):
-                await _fail_running_runs_for_device(device_id, db)
+                await asyncio.sleep(30)
+                if not manager.is_connected(device_id):
+                    await _fail_running_runs_for_device(device_id, db)
 
 
 async def _fail_running_runs_for_device(device_id: str, db: AsyncSession) -> None:

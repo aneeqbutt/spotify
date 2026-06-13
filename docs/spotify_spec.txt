@@ -1,0 +1,941 @@
+﻿Spotify Automation Platform
+Comprehensive Intern Development Guide
+Master Development Plan & Evaluation Guide
+Language: Python 3.8+ (Backend), React (Frontend), Java (Android APK)
+Total Duration: 2 Weeks (Milestone-Based) + Stability Testing (target: 20–40 hours)
+Level: Intern (Bare functionality, production-shaped patterns)
+Generated on: January 22, 2026
+Download the Java SDK: https://drive.google.com/file/d/1KupRqJFaCUqcicF-ZklVJIfbjx4pqXIg/view
+Video Demo: https://www.loom.com/share/fdf053c0d02e47d1a27af8e8b6926664
+Milestone Overview
+This project is structured into two equal milestones of one week each. The first week is dedicated entirely to reading and understanding the documentation, setting up all environments, and performing one basic Spotify interaction. All feature implementation happens in Week 2.
+  MILESTONE 1 — WEEK 1 
+  Documentation, Environment Setup & First Spotify Click 
+  Read all docs · Set up Frontend, Backend & APK · Launch Spotify · Perform a basic click via Accessibility Service 
+  MILESTONE 2 — WEEK 2 
+  Full System Implementation, Integration & Stability Testing 
+  JWT auth · WebSocket routing · React dashboard · Full Spotify executor (4 days) · Session scheduling · 20–40 hr stability test 
+Table of Contents
+1. Project Overview
+2. What You'll Learn
+3. Technical Foundation
+4. Core Concepts Explained
+5. Architecture Overview
+6. Setup & Environment
+7. Runtime Components
+8. Data & Auth Flow
+9. Frontend ⇄ Backend API Map
+10. Backend ⇄ Device Command Flow
+11. Spotify Bot APK (Deep Dive)
+	11.1 APK Responsibilities
+	11.2 Accessibility Service Design (Java JDK 8)
+	11.3 Required Guardrails
+	11.4 Spotify UI Challenges
+12. Spotify Automation Scope (Intern Feature Set)
+13. Development Phases
+	MILESTONE 1 — Week 1: Setup & First Click
+	MILESTONE 2 — Week 2: Full Implementation
+14. Production Requirements (Stability & Observability)
+15. Session-Based Automation (Scheduled Execution Window)
+16. Final Notes & Practical Tips
+17. Evaluation Criteria
+18. Troubleshooting & Operations
+19. Success Guidelines
+Appendix: Payload Templates & Reason Codes
+1. Project Overview
+Mission
+This project involves building a Spotify automation system where the user can create automation tasks via a web console, which will be executed on an Android device using a custom-built Spotify Bot APK that controls Spotify through its Accessibility Service. The platform must be simple but should follow a production-shaped architecture to ensure reliability, correctness, and observability.
+System Architecture
+Frontend → Backend → WebSocket → Android (Accessibility Service)
+Project Goals
+•       Allow users to trigger tasks from a web console.
+•       Authenticate and route commands through a backend.
+•       Use an Android Spotify Bot APK (via Accessibility Service using Java JDK 8) to interact with Spotify and execute commands.
+What "Bare Functionality" Means Here
+•       Focus on correctness, reliability, and observability.
+•       No complex scheduling system (optional stretch feature).
+•       No tiering, billing, or scaling features.
+•       No advanced device fleet management.
+2. What You'll Learn
+This project will help you gain both technical skills and a production mindset. By the end of the project, you'll have hands-on experience with building a full-stack system, automating interactions with Spotify, and ensuring the system is reliable, efficient, and robust. Here's what you will learn in detail:
+Technical Skills
+1. Building a React Console to Trigger Spotify Automation Tasks
+You will build a React frontend where users can create Spotify automation tasks and trigger them. Key concepts covered:
+•       UI Design & Development: Learn how to build an interactive user interface with React using hooks and state management. You'll work with components, forms, buttons, and lists to create a functional interface.
+•       API Integration: You will integrate the frontend with the backend, making GET and POST requests using Axios or Fetch to trigger Spotify tasks.
+•       Real-time Interaction: You'll implement features like a dashboard that dynamically updates task status based on responses from the backend, which will give you exposure to real-time UI rendering.
+2. Creating a FastAPI Backend with JWT Authentication and WebSocket Routing
+The backend will be built using FastAPI, a modern Python web framework known for its speed and ease of use. You'll implement:
+•       User Authentication with JWT: Learn how to set up JSON Web Tokens (JWT) for securing the API. The backend will authenticate users, generating a token upon login, which will be used for accessing protected resources.
+•       REST API Endpoints: You will define and create API endpoints for handling user login, task creation, and device management. You'll also handle data validation using Pydantic models.
+•       WebSocket Communication: Learn to set up a WebSocket server for communication with the Android devices (Spotify Bot APK). This will allow you to send commands to devices and receive progress updates (e.g., STEP_STARTED, STEP_OK, STEP_FAILED). You'll implement WebSocket authentication and message routing for real-time interaction.
+3. Using Accessibility Service in Java JDK 8 to Automate Spotify UI Interactions
+The Accessibility Service in Java JDK 8 plays a crucial role in automating interactions with the Spotify app. It allows automation scripts to interact with UI elements like buttons, sliders, and text fields without requiring direct access to the underlying app code. This service is typically used for tasks like accessibility for disabled users, but in this case, we will leverage it to automate and control Spotify on Android devices.
+3.1 Understanding Accessibility Service
+What is Accessibility Service?
+The Accessibility Service is a special service in Android that helps apps interact programmatically with other apps' user interfaces. It's often used for providing accessibility features for people with disabilities, such as voice feedback or screen magnification. However, for our use case, we will take advantage of this service to automate Spotify's interface.
+How Accessibility Service Works
+Accessibility services can interact with UI elements (e.g., buttons, checkboxes, sliders, etc.) in other apps by observing their properties and performing actions like clicks, text input, or scroll gestures. The service can retrieve the UI tree (a hierarchy of UI components) and use UI element selectors to target specific components in the app, even without knowing the exact positions or layout of these elements on the screen.
+Key concepts:
+•       UI Tree Traversal: The Accessibility Service allows us to traverse the UI tree of the app (Spotify) and interact with its UI elements.
+•       UI Selectors: We use properties like resource-id, content-description, and text to locate UI components.
+Enabling Accessibility Service in Android
+To use the Accessibility Service, we need to:
+•       Declare the service in the Android manifest.
+•       Enable the service in the device settings under Accessibility.
+•       Grant permissions for the service to interact with other apps.
+Example of Accessibility Service Configuration in Android:
+<service
+    android:name=".MyAccessibilityService"
+    android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+	<intent-filter>
+    	<action android:name="android.accessibilityservice.AccessibilityService" />
+	</intent-filter>
+	<meta-data
+        android:name="android.accessibilityservice"
+        android:resource="@xml/accessibility_service_config" />
+</service>
+The configuration file (accessibility_service_config.xml) defines the types of feedback the service provides (e.g., gestures, touch events).
+3.2 Spotify UI Automation
+Once the Accessibility Service is set up, we can begin automating interactions with the Spotify UI. This involves controlling playback (play, pause), liking songs, searching for artists, and performing other Spotify-specific tasks.
+Key Actions in Spotify Automation:
+1. Playback Control
+•       Play/Pause: Interact with the play/pause button in Spotify's Now Playing screen.
+•       UI Selector: Use the content-desc or resource-id to identify the play/pause button.
+•       Action: Simulate a click on the play/pause button to control playback.
+2. Liking Songs
+•       Like a Song: Automate the heart button to like the current track.
+•       UI Selector: Use the content-desc or resource-id for the like button.
+•       Action: Simulate a click to "like" the song.
+3. Searching for Artists
+•       Search for an Artist: Use the search field in the app to search for artists like "Daft Punk".
+•       UI Selector: Use the resource-id for the search input field.
+•       Action: Input the artist's name and trigger a search.
+4. Navigating Between Screens
+•       Navigating to Now Playing Screen: After searching or selecting an artist, automate navigation to the Now Playing screen by selecting the correct item.
+•       UI Selector: Use the resource-id or content-desc of the item to navigate.
+•       Action: Simulate a click to select the item.
+3.3 UI State Validation
+Once you've implemented the actions, it is crucial to validate the UI state to ensure that the automation behaves as expected.
+Why Validate UI State?
+UI state validation is essential to ensure that the intended action was successful. For instance, after clicking the play button, you need to confirm that the playback state has changed to "playing."
+1. Ensuring Playback — After sending the play command, verify that Spotify is indeed playing:
+2. Checking Like Status — Once the like action is triggered, ensure the song is liked by checking the state of the heart button (it should change color or style).
+3. Verifying Search Results — After performing a search, ensure that the expected results appear:
+4. Handling UI Element Updates — Spotify's UI may update dynamically. Wait for the UI to stabilize before interacting further:
+}
+3.4 Handling UI Pop-ups and Errors
+Occasionally, Spotify will show pop-ups or error messages (e.g., "Sign-in required", "Network error"). You must handle these pop-ups to ensure uninterrupted automation. If a pop-up appears, use node selectors to identify and dismiss it.
+Example of dismissing a pop-up:
+AccessibilityNodeInfo popUp = rootNode.findAccessibilityNodeInfosByText("Sign In").get(0);
+if (popUp != null) {
+	AccessibilityNodeInfo okButton = rootNode.findAccessibilityNodeInfosByText("OK").get(0);
+	if (okButton != null) {
+        okButton.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+	}
+}
+3.5 Best Practices for Spotify UI Automation
+•       Avoid Coordinate-Based Clicking: Rely on UI element selectors rather than fixed screen coordinates to make the automation more stable across different devices and screen sizes.
+•       Handle Dynamic UI Updates: Ensure that you check for UI state changes (e.g., the track is playing) before proceeding with the next action.
+•       Use AccessibilityEvent Filters: In cases where UI elements are complex or dynamic, use filters to listen for accessibility events to trigger actions when the app reaches a certain state.
+4. Designing Stable Command Payloads and Reason Codes to Handle Execution States
+The command payloads are the heart of communication between the backend and the devices. You will learn to:
+•       Design Robust Command Payloads: Learn how to structure command payloads (e.g., SEARCH_AND_PLAY, PAUSE, LIKE_CURRENT_TRACK) in a way that allows flexibility, reusability, and simplicity. These payloads will include the task to be executed, the parameters, and any additional context such as probabilities or user preferences.
+•       Reason Codes: Each action and step in the automation process needs to have clear reason codes to diagnose failures. For instance, if a task fails, it might return a reason like UI_ELEMENT_NOT_FOUND or TIMEOUT. You will learn how to define a reason code taxonomy for consistent and actionable error reporting.
+5. Debugging Across Layers: UI → API → Device Runtime
+This is a crucial skill for production-grade systems. You'll learn how to trace and debug issues across the entire stack:
+•       UI Layer Debugging: Using Android Studio and logcat, you'll learn to inspect UI interactions, identify broken selectors, and troubleshoot UI-related failures in the Spotify Bot APK.
+•       API Layer Debugging: You will use FastAPI's automatic docs to test API endpoints and debug issues like missing parameters or authentication failures.
+•       Device Runtime Debugging: You'll debug the device's runtime (Android app) to ensure command delivery and execution happen without issues. You'll also handle retries, timeouts, and state resets gracefully.
+Production Mindset Skills
+1. Preventing Infinite Loops and Handling Flaky Behavior
+In real-world applications, systems often encounter unpredictable errors, such as network timeouts or unresponsive services. You will learn how to:
+•       Detect Infinite Loops: Ensure that commands don't execute repeatedly if the state hasn't changed (e.g., preventing retry storms).
+•       Handle Flaky Behavior: You will implement retry logic with exponential backoff to handle occasional failures, such as network glitches or temporary API unavailability.
+2. Writing Logs That Make Failures Diagnosable
+Writing clear, structured, and actionable logs is crucial for debugging production systems. You will:
+•       Log Progress: Learn how to log detailed information for each step (e.g., action started, action successful, action failed).
+•       Contextual Logs: Include contextual information such as command_id, step_id, device_id, and run_id in your logs to make failures traceable.
+•       Reason Codes in Logs: Include reason codes (e.g., TIMEOUT, UI_ELEMENT_NOT_FOUND) in the logs to identify exactly what went wrong, helping you quickly diagnose and fix issues.
+3. Handling Disconnects, Retries, and State Resets Safely
+Systems often experience disconnections and failures, and handling them gracefully is key to building robust applications. You'll learn how to:
+•       Handle WebSocket Disconnects: Ensure that the backend properly reconnects to devices after disconnections (due to Wi-Fi changes, app restarts, etc.).
+•       Retry Logic: Implement retries with backoff (e.g., waiting for 500ms, 1s, 2s before retrying) for actions that failed temporarily.
+•       State Resets: In case of critical failures or unexpected app states, reset the state of the app to a known good configuration to continue operations. For instance, if the device is stuck on a broken screen, it should navigate back to a valid screen and retry the operation.
+3. Technical Foundation
+Required Stack (Minimal)
+Frontend
+•       React 18 with Vite for efficient development.
+•       Axios/Fetch for API requests.
+•       Simple UI components like forms and lists for user interaction.
+Backend
+•       FastAPI + Pydantic for defining request/response models.
+•       JWT authentication to secure user data and API endpoints.
+•       SQLite for persistence (storing users, devices, tasks, and runs).
+•       WebSocket for communication between backend and devices.
+Device (Spotify Bot APK)
+•       Android app built in Java.
+•       Uses Accessibility Service (Java JDK 8) to interact with the Spotify UI.
+•       WebSocket client for receiving commands and sending progress updates to the backend.
+•       A Foreground Service to keep the app alive during execution.
+4. Core Concepts Explained
+4.1 Command-Driven Automation
+•       The backend sends commands to the device.
+•       The device controls Spotify via the Accessibility Service by following a sequence of commands.
+•       The device reports the progress and final status back to the backend for each command.
+4.2 Idempotency & Safety
+•       Commands may arrive multiple times due to retries or reconnections.
+Each command includes:
+◦       command_id: Unique identifier for the command.
+◦       ttl_ms: Time-to-live for the command (device must fail if expired).
+◦       issued_at: The backend issuance timestamp.
+•       Devices must detect and handle duplicate commands and prevent harmful steps from executing multiple times.
+4.3 Observability
+•       Every command must emit progress reports (e.g., STEP_STARTED, STEP_OK, STEP_FAILED).
+•       Each failure must return a reason code (e.g., LOGIN_REQUIRED, TIMEOUT) to help diagnose issues.
+4.4 Accessibility Automation Constraints
+•       Use node selectors (e.g., resource-id, content-desc, text) to interact with elements on the screen.
+•       Avoid coordinate-only clicks unless absolutely necessary.
+•       Always verify that the expected state change has occurred after performing an action (e.g., after clicking play).
+5. Architecture Overview
+System Diagram
+Frontend (React) <--HTTP + JWT--> Backend (FastAPI)
+                   	└─ WebSocket --> Android Devices (Spotify Bot APK via Accessibility)
+Responsibilities (Clear Separation)
+Frontend
+•       User login
+•       Task creation and management
+•       Device selection and task execution
+•       Displaying task status updates
+Backend
+•       Authenticate users
+•       Persist tasks and device details
+•       Route commands to devices
+•       Track task execution progress
+Spotify Bot APK
+•       Connect to the backend and listen for commands
+•       Execute Spotify actions using the Accessibility Service
+•       Report progress and results back to the backend
+6. Setup & Environment
+Frontend Setup
+•       Configure API base URL (VITE_API_BASE_URL) for environment.
+•       Run the dev server using React + Vite.
+Key UI components:
+◦       Login screen for user authentication.
+◦       Dashboard for managing devices and tasks.
+◦       Task form with options for creating automation tasks.
+◦       Run button to execute tasks and show real-time status updates.
+Backend Setup
+Environment Variables:
+•       JWT_SECRET, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+•       DATABASE_URL=sqlite:///./spotify_automation.db
+•       DEVICE_SHARED_SECRET (for device authentication)
+Required Endpoints:
+•       POST /login: User authentication.
+•       GET /devices: List devices.
+•       POST /tasks: Create tasks.
+•       POST /send_command: Send commands to devices.
+7. Runtime Components
+Backend Components
+•       REST API: Handles login, task management, and command routing.
+•       Database (SQLite): Stores user details, devices, tasks, and task status.
+•       WebSocket Connection: Communicates real-time events between backend and devices.
+Device (Spotify Bot APK) Components
+•       Foreground Service: Ensures that the app remains alive and running.
+•       WebSocket Client: Receives commands from the backend.
+•       Execution Engine: Executes Spotify commands (e.g., play, like, follow).
+•       Progress Reporting: Sends progress updates to the backend after every step.
+8. Data & Auth Flow
+User Authentication (Frontend ↔ Backend)
+•       User logs in → Backend returns a JWT token.
+•       Frontend stores the JWT and attaches it to subsequent API requests.
+Device Authentication (Device ↔ Backend)
+•       Device connects via WebSocket with device_id and device_auth_token.
+•       Backend validates the device using the shared token.
+9. Frontend ⇄ Backend API Map
+The following table outlines the complete API surface between the React frontend and the FastAPI backend:
+Authentication
+•       POST /login — Accepts { username, password }, returns { access_token, token_type }. Frontend stores the token and attaches it as a Bearer header on all subsequent requests.
+Device Management
+•       GET /devices — Returns a list of all registered devices with their current status (online / offline), device_id, app_version, and capabilities. Frontend uses this to populate the device selector.
+•       GET /devices/{device_id} — Returns full details for a single device including last seen timestamp and connection state.
+Task Management
+•       POST /tasks — Creates a new automation task. Body includes: task_name, action_type (e.g., SEARCH_AND_PLAY, LIKE_CURRENT_TRACK), search_query, action_params (probability, duration, limit, etc.).
+•       GET /tasks — Returns all tasks for the authenticated user.
+•       GET /tasks/{task_id} — Returns full details for a specific task.
+Command Execution
+•       POST /send_command — Triggers a task on a device immediately. Body includes: task_id, device_id. Backend generates command_id, sets issued_at, and sends to the device via WebSocket.
+Run History
+•       GET /runs — Returns all run records with status (RUNNING, SUCCESS, FAILED), timestamps, and step-level events.
+•       GET /runs/{run_id} — Returns full run details including all STEP_STARTED, STEP_OK, STEP_FAILED events with reason codes.
+Sessions (Scheduled Automation)
+•       POST /sessions — Creates a scheduled session. Body: device_id, task_id, start_time, end_time.
+•       GET /sessions — Lists all sessions with their status (scheduled / running / done / failed).
+•       POST /sessions/{id}/stop — Manually stops a running session.
+10. Backend ⇄ Device Command Flow
+Connection Lifecycle
+•       Device starts and connects to the backend WebSocket endpoint.
+•       Device sends DEVICE_HELLO with { device_id, device_auth_token, app_version, capabilities }.
+•       Backend validates the token, stores the connection, marks device as online.
+•       Backend replies with HELLO_ACK or HELLO_REJECT.
+Command Dispatch
+•       Backend creates a command object with { command_id, task_id, action_type, params, issued_at, ttl_ms }.
+•       Backend sends command over the device's WebSocket connection.
+•       Device validates: is ttl_ms still valid? Has this command_id already been seen?
+•       Device queues the command for execution if valid.
+Progress Reporting Protocol
+•       STEP_STARTED — Emitted by device when a step begins. Payload: { command_id, step_id, step_name, timestamp }.
+•       STEP_OK — Emitted when a step completes successfully. Payload: { command_id, step_id, timestamp }.
+•       STEP_FAILED — Emitted when a step fails. Payload: { command_id, step_id, reason_code, detail, timestamp }.
+•       COMMAND_DONE — Emitted when the entire command finishes. Payload: { command_id, final_status, timestamp }.
+Disconnect & Reconnect Handling
+•       If the device disconnects, the backend marks it offline and pauses in-flight command tracking.
+•       When the device reconnects and sends DEVICE_HELLO again, the backend resumes tracking.
+•       The device should resume emitting events for any commands that were in-flight before the disconnect.
+Duplicate Command Prevention
+•       Device maintains a seen_command_ids set (LRU-capped) to detect retransmissions.
+•       If a duplicate command_id arrives, the device logs a warning and discards it without re-executing.
+11. Spotify Bot APK (Deep Dive)
+11.1 APK Responsibilities
+•       Connectivity: Connects to the backend WebSocket and maintains the connection with keep-alive pings.
+•       Command Handling: Receives commands, validates TTL and duplicate check, and queues them for execution.
+•       Execution Engine: Handles the execution of Spotify actions via the Accessibility Service.
+•       Progress Reporting: Sends STEP_STARTED, STEP_OK, STEP_FAILED, and COMMAND_DONE events to the backend after every action.
+11.2 Accessibility Service Design (Java JDK 8)
+The Accessibility Service in Java JDK 8 interacts with the Spotify UI to perform actions like clicking buttons, playing songs, and verifying UI states. This JDK version is crucial for automation reliability.
+•       SpotifyNavigator: Handles navigation between screens (e.g., Home, Search, Now Playing). Knows how to move to any screen from any other screen.
+•       SpotifyActions: Implements the state machine for each action (e.g., search, play, like). Each action includes a pre-condition check, execution, and post-condition verification.
+•       CommandRunner: Manages command flow, retries, cancellations, and progress reporting. Orchestrates SpotifyNavigator and SpotifyActions for each incoming command.
+11.3 Required Guardrails
+•       Step Timeout: 10–20 seconds per step. If a UI element is not found or an action does not complete within this window, the step fails with a TIMEOUT reason code.
+•       Overall TTL: 3–5 minutes for the entire command. If the command is still running beyond this, it must be terminated and reported as FAILED with reason COMMAND_TTL_EXCEEDED.
+•       Max Retries Per Step: 2–3 retries before failing. Each retry must include a short delay (500ms–1s) and a fresh UI tree fetch.
+•       Unknown Screen Handling: If the current screen is not recognized, execute back navigation up to 3 times to return to a known state before proceeding.
+11.4 Spotify UI Challenges
+•       First-run prompts: Handle notifications permission dialogs and other initial setup prompts that appear when Spotify is launched fresh.
+•       Login Gate: If Spotify requires login and the user is not authenticated, fail the command immediately with reason LOGIN_REQUIRED and do not attempt further automation.
+•       Network Offline: If Spotify shows a "No connection" banner, fail with reason NETWORK_OFFLINE. Do not retry indefinitely.
+•       Dynamic Content: Spotify's home feed and search results are dynamic. Use content-desc and resource-id selectors rather than text where possible, as text can change with locale.
+•       Overlay Ads: If an ad overlay appears, attempt to dismiss it by finding the close button. If it cannot be dismissed, wait up to 30 seconds for it to expire.
+12. Spotify Automation Scope
+Core Search & Discovery Features
+•       Search by Artist Name
+•       Search by Album Name
+•       Search by Song Name
+•       Search by Playlist Name
+•       Fuzzy Matching for Search Results
+•       Filter by Artists, Albums, Songs, Playlists
+Playback Features
+•       Automatic Music Playback
+•       Play from Artist Catalog
+•       Play from "This Is [Artist]" Playlists
+•       Play from Artist Radio Stations
+•       Play Entire Albums & Playlists
+•       Playback Verification & Monitoring
+Interactive Actions
+•       Like Songs (Heart Button)
+•       Save Songs to Library
+•       Follow Artist Profiles
+•       Follow Playlists
+•       Add Songs to Playlists
+•       Create New Playlists and Add Tracks
+•       Random Song Skips — Immediate skip (10% probability)
+Limits & Controls
+•       Daily/Hourly Song Limits — Configurable with randomization
+•       Clone Blocking when limits are reached
+Safety & Human-Like Behavior
+•       Randomized Delays Between Actions (2–6 seconds)
+•       Variable Scroll Speeds
+•       Random Pauses During Playback (30–120 seconds)
+•       Randomized Tap Coordinates
+•       Occasional Back Navigations
+•       Cooldown Periods (1–5 minutes random)
+13. Development Phases (Week Plan)
+The development is divided into two milestones. Milestone 1 (Week 1) is entirely about understanding, setup, and first contact with Spotify. Milestone 2 (Week 2) covers all full-system implementation. The Spotify Executor (automation core) is allocated 4 dedicated days given it is the most complex and important part of the project.
+  MILESTONE 1 — WEEK 1 
+  Documentation, Environment Setup & First Spotify Click 
+Milestone 1 Goals
+By the end of Week 1, the intern must have accomplished all of the following:
+•       Thoroughly read and annotated this entire development guide.
+•       Watched the video demo and downloaded the Java SDK.
+•       Understood the full architecture: Frontend → Backend → WebSocket → APK → Accessibility Service.
+•       Understood command payloads, reason codes, step events, and TTL semantics.
+•       All three environments running: React dev server, FastAPI server, Android APK installed.
+•       Accessibility Service declared, configured, and enabled on the device.
+•       Spotify launched from the APK programmatically.
+•       At least one basic click performed via Accessibility Service with logs confirming success.
+Milestone 1 is intentionally focused on understanding and preparation — not features. A well-prepared intern who truly understands the system architecture will build Milestone 2 significantly faster and with far fewer critical bugs.
+Phase M1-A: Documentation & Architecture Understanding (Days 1–2)
+Before writing a single line of code, the intern must fully read and internalize this document and understand the complete system design.
+Day 1 — Full documentation read-through and video demo review
+M1-A.1 Read All Documentation
+Goal: Complete understanding of every section of this guide.
+Tasks:
+•       Read the entire guide from start to finish without skipping any section.
+•       Take notes on the architecture, command flow, Accessibility Service design, and reason codes.
+•       Watch the full video demo (link on the title page) to understand what the final system looks like.
+•       Download and inspect the Java SDK (link on the title page). Review included README or setup notes.
+•       Identify and note any unclear concepts to resolve before starting implementation.
+Day 2 — Architecture mapping and flow tracing exercise
+M1-A.2 Architecture Mapping Exercise
+Goal: Demonstrate full comprehension of the system before touching any code.
+Tasks:
+•       Draw or document the complete data flow: user clicks "Run Now" → command reaches Spotify on device.
+•       Map the WebSocket connection lifecycle: connect → DEVICE_HELLO → HELLO_ACK → command dispatch.
+•       Trace a full command lifecycle: issued_at → ttl check → queued → STEP_STARTED → STEP_OK → COMMAND_DONE.
+•       Understand why command_id and idempotency exist — what breaks without them?
+•       Understand what reason codes are and why they matter for debugging real failures.
+This step is not optional. Interns who skip it consistently encounter architecture-level bugs in Week 2 that are very hard to fix after the fact.
+Phase M1-B: Environment Setup (Days 2–3)
+Set up all three environments so they are individually verified and ready before any integration begins.
+Day 2 (continued) / Day 3 — Environment setup across all three layers
+M1-B.1 Backend Setup
+Goal: FastAPI backend runs cleanly and basic endpoints respond.
+Tasks:
+•       Install Python 3.8+ and required packages: FastAPI, Uvicorn, python-jose (JWT), SQLite drivers, WebSocket support.
+•       Configure all environment variables: JWT_SECRET, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, DATABASE_URL, DEVICE_SHARED_SECRET.
+•       Run the FastAPI dev server (uvicorn main:app --reload) and confirm it starts without errors.
+•       Verify the /docs endpoint is accessible and shows the API documentation.
+•       Confirm SQLite database file is created on startup.
+M1-B.2 Frontend Setup
+Goal: React development server runs and serves the basic login page.
+Tasks:
+•       Install Node.js (LTS) and create a React 18 project using Vite.
+•       Configure VITE_API_BASE_URL in .env to point to the local backend.
+•       Install Axios or confirm Fetch is available.
+•       Verify the dev server starts (npm run dev) and the app loads in the browser without errors.
+•       Confirm API calls reach the backend by testing a simple /health or /login request from the browser.
+M1-B.3 Android APK Setup
+Goal: APK installs on the Android device, builds cleanly, and Accessibility Service is visible.
+Tasks:
+•       Install Android Studio and the Java SDK downloaded from the provided link.
+•       Load the Spotify Bot APK project in Android Studio.
+•       Resolve any build dependency errors and confirm the project compiles.
+•       Connect a physical Android device via USB or configure an emulator with Spotify installed.
+•       Build and install the APK on the device.
+•       Navigate to device Settings → Accessibility → Installed Services and confirm the Spotify Bot service appears.
+•       Enable the Accessibility Service and grant all required permissions.
+•       Confirm the service starts without crashing (check logcat for service lifecycle events).
+Phase M1-C: First Spotify Click (Days 4–5)
+This is the primary technical deliverable of Milestone 1. The goal is to prove that the APK can communicate with Spotify's UI through the Accessibility Service.
+Day 4 — Launch Spotify programmatically and locate first UI element
+M1-C.1 Launch Spotify via APK
+Goal: The APK can launch Spotify on the device without any manual user interaction.
+Tasks:
+•       Write code in the APK to launch the Spotify app using an Intent.
+•       Wait for Spotify to reach a stable state (home screen or last-used screen).
+•       Log confirmation that Spotify is in the foreground using logcat.
+•       Handle the case where Spotify is already open (bring it to the foreground, don't re-launch).
+M1-C.2 Perform a Basic Click via Accessibility Service
+Goal: Locate a real Spotify UI element using the Accessibility Service and perform a click.
+Tasks:
+•       Use the Accessibility Service to fetch the current root UI node (getRootInActiveWindow()).
+•       Locate a simple element — the Search bar or the Play/Pause button are good first targets.
+•       Use findAccessibilityNodeInfosByText() or findAccessibilityNodeInfosByViewId() to find the element.
+•       Call performAction(AccessibilityNodeInfo.ACTION_CLICK) on the located node.
+•       Observe the Spotify UI to confirm the click was registered (e.g., the search bar becomes active).
+•       Do NOT rely on screen coordinates for this step — use proper node selectors only.
+Day 5 — Verify state change and confirm logging output
+M1-C.3 Verify State Change After Click
+Goal: Confirm that the click action produced the expected UI change in Spotify.
+Tasks:
+•       After the click, re-fetch the UI tree and check that the expected change occurred (e.g., search bar is now focused, playback started).
+•       If the expected element is not found, log a clear reason code (UI_ELEMENT_NOT_FOUND).
+•       If the click succeeded but the state did not change as expected, log UNEXPECTED_STATE.
+•       Implement at least one retry: if the first click fails, wait 1 second and try once more.
+M1-C.4 Verify Logging
+Goal: All actions are confirmed in logs with structured output.
+Tasks:
+•       Logcat must show: element search initiated, element found (or not found), action performed, and outcome.
+•       Each log line must include at minimum: timestamp, action name, result, and reason code if failed.
+•       Logs must be clear enough that a second person reading them can reconstruct exactly what happened without looking at the device.
+Milestone 1 is COMPLETE when: Spotify opens on the device AND at least one UI element is found AND clicked AND the action is confirmed in logs with proper reason codes on failure.
+  MILESTONE 2 — WEEK 2 
+  Full System Implementation, Integration & Stability Testing 
+Milestone 2 Goals
+By the end of Week 2, the intern must have accomplished all of the following:
+•       Fully functional JWT login and user authentication end-to-end.
+•       Persistent task and device management backed by SQLite.
+•       Working WebSocket connection with DEVICE_HELLO handshake and keep-alive.
+•       React dashboard with login, task creation, Run Now button, and live step status display.
+•       All core Spotify automation actions implemented and verified (4 dedicated days).
+•       Session-based scheduling: automation runs automatically at the defined start time and stops at the end time.
+•       Comprehensive logging with command_id, device_id, step_id, and reason codes on every event.
+•       System demonstrated stable for 20–40 hours of continuous operation without crashes.
+Phase 1: Backend Foundation (Day 1 of Week 2)
+The first day of Week 2 focuses on building all backend foundations. These components underpin every other feature in the system.
+Day 1 — JWT auth, persistence, command routing, WebSocket handler
+1.1 Implement JWT Login
+Goal: Implement JWT authentication to secure the backend API.
+Tasks:
+•       Create an auth endpoint (/login) that accepts { username, password } and returns { access_token, token_type }.
+•       Use Pydantic models to validate input (username and password).
+•       On successful authentication, generate a JWT token with expiration time (controlled by ACCESS_TOKEN_EXPIRE_MINUTES).
+•       Implement a token validation dependency that ensures only authorized users can access protected endpoints.
+•       Return a clear 401 Unauthorized with reason INVALID_CREDENTIALS for failed login attempts.
+Resources: FastAPI docs on JWT authentication, Pydantic models for data validation.
+1.2 Implement Task and Device Management Persistence
+Goal: Set up SQLite to persist tasks, device records, and run history.
+Tasks:
+•       Create database tables for: users, devices, tasks, runs, and run_events.
+•       Define Pydantic models to validate task details (task_name, action_type, search_query, action_params) and device details (device_id, status, capabilities, last_seen).
+•       Implement CRUD operations to create, update, and fetch tasks and devices.
+•       Track task execution history including: run_id, task_id, device_id, status, start_time, end_time.
+•       Store all STEP_STARTED, STEP_OK, STEP_FAILED events in run_events table with full payload.
+Resources: FastAPI docs on Database Integration.
+1.3 Implement /send_command Endpoint for Triggering Tasks
+Goal: Implement an endpoint to trigger tasks on devices immediately.
+Tasks:
+•       Create a /send_command endpoint accepting { task_id, device_id }.
+•       Generate a unique command_id (UUID) for each task execution.
+•       Set issued_at to current UTC time and ttl_ms to a configured default (e.g., 180000 for 3 minutes).
+•       Send the command payload to the target device over WebSocket.
+•       Return an error if the device is offline or not connected.
+•       Implement command queuing so that multiple tasks can be processed sequentially on the same device.
+Resources: FastAPI docs on API routing.
+1.4 Implement WebSocket Device Connection Handler
+Goal: Real-time bidirectional communication between backend and devices.
+Tasks:
+•       Set up a WebSocket endpoint (/ws/device) for devices to connect to.
+•       Devices must authenticate on connection via DEVICE_HELLO message with { device_id, device_auth_token, app_version, capabilities }.
+•       Validate the device_auth_token against DEVICE_SHARED_SECRET. Reject invalid connections with HELLO_REJECT.
+•       On successful authentication, store the WebSocket connection keyed by device_id. Send HELLO_ACK.
+•       Track online/offline status in the database with last_seen timestamps.
+•       Handle STEP_STARTED, STEP_OK, STEP_FAILED, and COMMAND_DONE messages from devices — persist to DB and forward to any listening frontend clients.
+•       Detect disconnects (WebSocket close / exception) and update device status to offline.
+Resources: FastAPI docs on WebSockets.
+Phase 2: Frontend Foundation (Days 1–2 of Week 2)
+Build the React frontend so users can interact with the system, create tasks, and monitor execution in real time.
+Days 1–2 — Login, dashboard, task creation form, Run Now button
+2.1 Develop the Login Page and Dashboard
+Goal: Users can log in and see a live dashboard of devices and tasks.
+Tasks:
+•       Create a login form with username and password fields that posts to /login.
+•       On successful login, store the JWT in localStorage and configure Axios/Fetch with the Authorization: Bearer header.
+•       Redirect to the dashboard on successful login. Show a clear error message on failure.
+•       Build a dashboard that displays: a list of available devices with their current status (Online / Offline), and a list of existing tasks.
+•       Poll or use WebSocket to update device status and task progress dynamically without manual refresh.
+2.2 Build the Task Creation Form with Basic Fields
+Goal: Users can define automation tasks from the UI.
+Tasks:
+•       Create a task creation form including: Search Query (text input), Action Type (dropdown: SEARCH_AND_PLAY, LIKE_CURRENT_TRACK, FOLLOW_ARTIST, etc.), Action Parameters (e.g., play duration, like probability, skip probability).
+•       Submit the form data to POST /tasks and display the newly created task in the task list.
+•       Validate that required fields are filled before submission and show inline errors.
+•       Display all tasks in the dashboard with their name, action type, and creation time.
+2.3 Integrate Run Now Button and Show Task Status Updates
+Goal: Users can trigger tasks and see real-time progress.
+Tasks:
+•       Add a Run Now button to each task in the dashboard that calls POST /send_command with the task_id and selected device_id.
+•       Disable the button while the task is running to prevent double submissions.
+•       Display a real-time step progress list under the running task: show STEP_STARTED, STEP_OK, STEP_FAILED events as they arrive from the backend.
+•       Show a final status badge (SUCCESS / FAILED) when COMMAND_DONE is received.
+•       For STEP_FAILED events, display the reason_code clearly in the UI.
+Phase 3: Device Connectivity & Skeleton (Days 2–3 of Week 2)
+Implement the WebSocket connection from the Android APK side, command queuing, and reconnection handling.
+Days 2–3 — DEVICE_HELLO handshake, command queuing, reconnect logic
+3.1 Implement WebSocket Connection and Authentication (DEVICE_HELLO)
+Goal: APK connects to the backend and authenticates reliably.
+Tasks:
+•       Implement a WebSocket client in the APK that connects to the backend /ws/device endpoint on startup.
+•       Send DEVICE_HELLO immediately after connection with { device_id, device_auth_token, app_version, capabilities }.
+•       Wait for HELLO_ACK before accepting any commands. On HELLO_REJECT, log the reason and do not retry indefinitely.
+•       Implement keep-alive pings every 30 seconds to prevent idle connection drops.
+3.2 Implement Command Queuing and Event Tracking
+Goal: Commands execute one at a time with full event reporting.
+Tasks:
+•       Implement a command queue (FIFO) in the APK. Only one command runs at a time.
+•       For each command: validate TTL first. If expired, emit STEP_FAILED with reason COMMAND_EXPIRED and discard.
+•       Check seen_command_ids to prevent duplicate execution.
+•       Emit STEP_STARTED at the beginning of each step and STEP_OK or STEP_FAILED at the end.
+•       Emit COMMAND_DONE with final_status (SUCCESS or FAILED) when all steps complete.
+3.3 Ensure WebSocket Reconnection Handling After Disconnects
+Goal: The APK reconnects automatically and resumes cleanly after any disconnect.
+Tasks:
+•       Detect WebSocket disconnects (exception, close event, timeout).
+•       Implement exponential backoff reconnect: 1s, 2s, 4s, 8s, max 30s between attempts.
+•       On reconnect, send DEVICE_HELLO again to re-authenticate and restore online status.
+•       If a command was in-flight during the disconnect, continue emitting events for it after reconnecting.
+•       Log every disconnect and reconnect event with timestamp and attempt count.
+Phase 4: Spotify Executor Implementation (Days 3–6 of Week 2) — 4 Days
+This is the most important and complex part of the project. It is allocated 4 dedicated days. The Spotify Executor is the core of the automation system. Every action must be implemented correctly, verified after execution, and instrumented with clear logs and reason codes. Do not rush this phase.
+Day 3 — Core search & navigation — spotify.search, screen routing, UI tree analysis
+4.1 Implement SpotifyNavigator — Screen Awareness and Navigation
+Goal: The APK knows which screen it is on at all times and can navigate to any target screen reliably.
+Tasks:
+•       Implement a screen detection function that identifies the current Spotify screen by inspecting the root UI node. Supported screens to detect: Home, Search, Search Results, Artist Page, Album Page, Playlist Page, Now Playing, Library.
+•       Implement navigation methods to move from any screen to any other screen: goToSearch(), goToHome(), goToNowPlaying(), goToLibrary().
+•       If the current screen is unrecognized (UNKNOWN_SCREEN), attempt up to 3 back navigations to return to a known state. Log each attempt.
+•       After every navigation action, wait up to 3 seconds for the screen to settle before proceeding. Use UI element presence as the stabilization signal, not a fixed sleep.
+•       Emit STEP_STARTED and STEP_OK / STEP_FAILED for every navigation step, including reason codes for failures (NAVIGATION_FAILED, UNKNOWN_SCREEN).
+4.2 Implement spotify.search Action
+Goal: The APK can search for any artist, album, song, or playlist by name and return to the correct results screen.
+Tasks:
+•       Navigate to the Search screen.
+•       Locate the search input field using resource-id (com.spotify.music:id/search_view or equivalent).
+•       Clear any existing text and input the search query using ACTION_SET_TEXT.
+•       Confirm the query text is set correctly by re-reading the field value.
+•       Submit the search (simulate keyboard search action or find and click the search submit button).
+•       Wait for results to appear. Use the presence of search result list items as the indicator.
+•       Optionally apply a filter (Artists / Albums / Songs / Playlists) if specified in the command params.
+•       Implement fuzzy match selection: find the result whose title most closely matches the expected artist/album/song name.
+•       Emit STEP_STARTED, STEP_OK, and STEP_FAILED at each sub-step with appropriate reason codes (SEARCH_FIELD_NOT_FOUND, NO_RESULTS_FOUND, FILTER_FAILED).
+Day 4 — Playback — play from artist, album, playlist, radio, and verify playback
+4.3 Implement spotify.play_from_artist Action
+Goal: Search for an artist and start playback from their catalog, a "This Is" playlist, or their radio station.
+Tasks:
+•       Execute spotify.search with the artist name.
+•       From the search results, select the matching artist and navigate to their Artist Page.
+•       Depending on action_params.play_mode:
+◦       CATALOG: Click the Shuffle Play button on the artist page.
+◦       THIS_IS: Navigate to the 'This Is [Artist]' playlist and start it.
+◦       RADIO: Find and play the artist's radio station.
+•       Verify playback started: confirm the Now Playing bar is visible and showing the expected artist or a track from their catalog.
+•       If playback does not start within 10 seconds, emit STEP_FAILED with reason PLAYBACK_DID_NOT_START.
+4.4 Implement spotify.play_from_album Action
+Goal: Search for an album and play it from the beginning.
+Tasks:
+•       Execute spotify.search with album filter active.
+•       Select the matching album from results.
+•       Navigate to the Album Page and click Play.
+•       Verify playback: confirm Now Playing bar shows the album name or a track from that album.
+•       Log the track name and album name from the Now Playing bar for observability.
+4.5 Implement spotify.play_from_playlist Action
+Goal: Search for a playlist and play it.
+Tasks:
+•       Execute spotify.search with playlist filter active.
+•       Select the matching playlist from results.
+•       Navigate to the Playlist Page and click Play or Shuffle Play.
+•       Verify playback and log current track name.
+•       Handle the case where the playlist is empty or unavailable.
+4.6 Implement Playback Verification & Monitoring
+Goal: After any play action, the APK confirms and monitors that playback is active.
+Tasks:
+•       After issuing any play command, poll the Now Playing bar every 2 seconds for up to 10 seconds.
+•       Confirm: the Now Playing bar is visible, a track name is shown, and the pause button is visible (not play).
+•       If playback stops unexpectedly during a session, log PLAYBACK_STOPPED_UNEXPECTEDLY and attempt to resume.
+•       For sessions, track total play time and enforce daily/hourly limits if configured in action_params.
+Day 5 — Interactive actions — like, save, follow, skip, add to playlist, create playlist
+4.7 Implement spotify.like_current_track Action
+Goal: Like the currently playing song using the heart button.
+Tasks:
+•       Navigate to the Now Playing screen.
+•       Locate the like/heart button using its content-desc (e.g., "Add to Your Library" or "Saved").
+•       Check the current state: is the track already liked? If so, skip without re-clicking.
+•       If not liked, perform ACTION_CLICK on the heart button.
+•       Verify the state changed: the content-desc should now read "Saved" or equivalent.
+•       If the state does not change within 3 seconds, emit STEP_FAILED with reason LIKE_VERIFICATION_FAILED.
+4.8 Implement spotify.save_to_library Action
+Goal: Save the current track or album to the user's library.
+Tasks:
+•       From the Now Playing screen, open the track options menu (three dots / More button).
+•       Find and click the "Save to Your Library" or "Add to Library" option.
+•       Confirm the save by checking for a toast notification or state change.
+•       Handle the case where the track is already in the library (do not double-save).
+4.9 Implement spotify.follow_artist Action
+Goal: Follow the artist of the currently playing track or a specified artist.
+Tasks:
+•       Navigate to the artist's page (either from Now Playing → artist link, or via search).
+•       Locate the Follow button using content-desc or resource-id.
+•       Check if already following (button may read "Following"). If so, skip.
+•       Click Follow and verify the button state changes to "Following".
+•       Emit STEP_FAILED with FOLLOW_VERIFICATION_FAILED if state does not change.
+4.10 Implement spotify.follow_playlist Action
+Goal: Follow a specified playlist.
+Tasks:
+•       Navigate to the target playlist page (via search or direct navigation).
+•       Locate the Follow / Save button on the playlist page.
+•       Click Follow and verify the button state change.
+4.11 Implement spotify.add_to_playlist Action
+Goal: Add the currently playing track to a specified playlist.
+Tasks:
+•       From the Now Playing screen, open the track options menu.
+•       Find and click "Add to Playlist".
+•       From the playlist picker, locate the target playlist by name.
+•       Click the target playlist to add the track.
+•       Confirm success via toast notification or UI state.
+4.12 Implement spotify.create_playlist Action
+Goal: Create a new playlist with a specified name and optionally add the current track to it.
+Tasks:
+•       Navigate to the Library screen.
+•       Find and click the Create Playlist option.
+•       Enter the playlist name using ACTION_SET_TEXT.
+•       Confirm creation and verify the new playlist appears in the library.
+•       If action_params.add_current_track is true, execute spotify.add_to_playlist immediately after.
+4.13 Implement spotify.skip_track Action (Random Skip Logic)
+Goal: Skip the current track with a configurable probability.
+Tasks:
+•       Apply the skip probability from action_params.skip_probability (default: 0.10 / 10%).
+•       Generate a random float between 0 and 1. If below the threshold, perform the skip.
+•       Locate and click the Skip Next button on the Now Playing screen.
+•       Verify a new track is now playing (track name or timestamp changed).
+•       Log the probability roll, whether skip was triggered, and the new track name.
+Day 6 — Human-like behavior, safety guardrails, full integration testing, pop-up handling
+4.14 Implement Human-Like Behavior and Safety Delays
+Goal: All automation actions include realistic randomized timing to mimic human interaction patterns.
+Tasks:
+•       Randomized Delays Between Actions: Insert a random delay of 2–6 seconds between every automation step. Use ThreadLocalRandom or similar for non-deterministic values.
+•       Variable Scroll Speeds: When scrolling through lists (search results, playlists), vary the scroll distance and speed per gesture.
+•       Random Pauses During Playback: During active playback in a session, insert random pauses of 30–120 seconds where no actions are taken (simulating the user just listening).
+•       Randomized Tap Coordinates: Add a small random offset (±5–15px) to all click coordinates even when using node-based targeting. This prevents perfectly identical click patterns.
+•       Occasional Back Navigations: With a low probability (5–10%), navigate back one level between actions to simulate natural browsing behavior.
+•       Cooldown Periods: Between task repetitions in a session, insert a random cooldown of 1–5 minutes.
+4.15 Implement Daily/Hourly Limits and Clone Blocking
+Goal: The APK respects configurable usage limits and prevents over-automation.
+Tasks:
+•       Read daily_limit and hourly_limit from action_params. These define the max number of songs to play in each window.
+•       Maintain a local counter (persistent across command executions within a session) for songs played in the current hour and day.
+•       When a limit is reached, emit STEP_FAILED with reason DAILY_LIMIT_REACHED or HOURLY_LIMIT_REACHED and stop the session.
+•       Clone Blocking: If the same action type (e.g., LIKE_CURRENT_TRACK) is attempted on the same track more than once in a session, skip it silently with a log entry.
+4.16 Full Integration Testing of All Actions
+Goal: Every implemented action runs end-to-end from the frontend through to Spotify and back.
+Tasks:
+•       For each action (search, play, like, save, follow, skip, add to playlist, create playlist): trigger it from the frontend Run Now button, observe it execute on the device, and verify the COMMAND_DONE status appears in the dashboard.
+•       Confirm all step events (STEP_STARTED, STEP_OK / STEP_FAILED) are stored in the database and visible in the run history UI.
+•       Test failure paths: disconnect Wi-Fi mid-command, lock the device screen, navigate away from Spotify during execution. Confirm proper reason codes are returned.
+•       Verify pop-up handling: trigger a login prompt, a permissions dialog, and a network error banner. Confirm each is handled or causes a clean failure with a specific reason code.
+•       Run the full automation sequence at least 5 consecutive times without any manual intervention and confirm consistent results.
+Phase 5: Stability Testing & Final Adjustments (Days 6–7 of Week 2)
+The final phase focuses on proving that the system is stable, observable, and production-ready over extended operation.
+Days 6–7 — Memory testing, disconnect simulation, logging audit, 20–40 hr run
+5.1 Conduct Repeated Command Runs to Test for Memory Leaks and Stability
+Goal: Ensure the system remains stable during long-running operations.
+Tasks:
+•       Run the system through 50+ continuous task executions to simulate real-world usage.
+•       Monitor Android device memory usage over time using Android Studio's memory profiler. Watch for steadily increasing heap usage (leak signal).
+•       Monitor backend memory and CPU usage over the same period.
+•       Verify that the system recovers cleanly from any individual task failure without affecting subsequent tasks.
+•       If leaks are found, identify the source (likely: UI tree nodes not recycled, unclosed WebSocket connections, unbounded log buffers) and fix.
+5.2 Monitor for Disconnects and Retry Behavior
+Goal: Ensure that the system handles disconnections gracefully under all conditions.
+Tasks:
+•       Simulate a Wi-Fi disconnect during an active task. Confirm the device reconnects and emits remaining events.
+•       Kill the APK process mid-command. Restart it and confirm it re-authenticates cleanly.
+•       Restart the backend while a device is connected. Confirm the device detects the disconnect and reconnects.
+•       Verify that in all these scenarios: no task is left in a permanently RUNNING state in the database.
+•       Confirm exponential backoff is working correctly by measuring actual reconnect intervals.
+5.3 Implement Logging and Debug Output for Traceability
+Goal: Any failure can be diagnosed within 30 seconds by reading logs alone.
+Tasks:
+•       Review all log output across backend, frontend, and APK. For every log line ask: does this give enough context to know what happened?
+•       Every backend log related to a command must include: command_id, device_id, task_id, step_name, reason_code (on failure).
+•       Every APK log must include: command_id, step_name, UI element targeted, action performed, outcome, reason_code.
+•       Session logs must include: session_id, start_time, end_time, total steps executed, total failures.
+•       Ensure logs follow a consistent format: [TIMESTAMP] [LEVEL] [COMPONENT] [command_id] message.
+•       Conduct a log audit: run one complete automation sequence, then try to reconstruct the full execution trace using only log output. If anything is missing, add it.
+14. Production Requirements (Stability & Observability)
+•       Stability for 20–40 hours without crashes.
+•       Log every action, track state changes, and handle failures gracefully.
+Session logging example (conceptual):
+session started at 04:00
+steps executing
+session ended at 04:30
+15. Session-Based Automation (Scheduled Execution Window)
+15.1 What This Means
+Up until now, tasks are triggered manually using something like a "Run Now" button. In real usage, that's not always practical. Sometimes you want automation to run at a specific time without being present. This is where session-based automation comes in.
+Instead of running instantly, a user can define a time window: when the automation should start, and when it should stop. During that window, the system keeps running the task in a loop (with delays and randomness, as already defined in earlier sections).
+15.2 Basic Idea
+A session is just:
+•       a task
+•       a device
+•       a start time
+•       an end time
+The backend is responsible for: starting it at the right time, and stopping it when the window ends. The device doesn't just run once anymore. It keeps executing until the session expires.
+15.3 Example (Simple)
+Let's say a user wants this:
+•       Start: 4:00 AM
+•       End: 4:30 AM
+•       Task: play songs from an artist (e.g., Drake), with some randomness
+So what should happen:
+•       At 4:00 AM → backend automatically sends the command
+•       Device starts: searching the artist, playing songs, sometimes liking, sometimes skipping
+•       It keeps doing this with delays (like 2–6 seconds, pauses, etc.)
+•       At 4:30 AM → everything stops
+No manual trigger needed.
+15.4 What Needs to Change in Backend
+You don't need a heavy scheduling system. Keep it simple.
+1. Store Sessions in DB — Add a new table:
+•       id
+•       user_id
+•       device_id
+•       task_id
+•       start_time
+•       end_time
+•       status (scheduled / running / done / failed)
+2. Add a Small Scheduler
+You can use: a background loop (asyncio) or APScheduler (simpler and cleaner).
+What it should do:
+•       Check for sessions that need to start
+•       Trigger them at the right time
+•       Keep track of active sessions
+•       Stop them when time is over
+3. Trigger Command at Start Time
+•       At start_time: generate a command_id, send command via WebSocket, include session info so device knows this is not a one-time run
+4. Stop at End Time
+•       At end_time, either: send a STOP command, or rely on device to stop itself based on time
+•       Both are fine, but device-side stop is safer.
+15.5 What Changes on Device (APK)
+This is important. Right now, execution is like: receive command → execute steps → finish. With sessions, it becomes more like a loop.
+Instead of running once, the device keeps doing:
+•       Execute task
+•       Wait random delay
+•       Repeat
+Until:
+•       Session end time reached
+•       Or stop command received
+Conceptually:
+•       Store session_end_time
+•       Keep checking current time
+•       Stop when limit is reached
+Also:
+•       Make sure it doesn't get stuck in infinite loops
+•       Reset state after session ends
+15.6 API Additions (Minimal)
+•       POST /sessions → create a scheduled session
+•       GET /sessions → list them
+•       POST /sessions/{id}/stop → optional manual stop
+Payload is simple: device_id, task_id, start_time, end_time
+15.7 Frontend Changes
+Small UI updates are enough:
+•       Add start time and end time fields in task creation
+•       Add a toggle: Run Now / Schedule
+•       Dashboard: show upcoming sessions, show active sessions, allow stop
+No need for complex calendar UI.
+15.8 Logging / Observability
+Treat sessions like first-class events. At minimum log:
+•       When session starts
+•       When it ends
+•       If it fails
+Include: session_id, device_id, timestamps
+Example (conceptual, not strict format):
+session started at 04:00
+steps executing
+session ended at 04:30
+15.9 Edge Cases (Don't Overcomplicate)
+Just handle basics:
+•       Device offline at start → retry briefly, else fail
+•       Disconnect during session → resume if still in time window
+•       Overlapping sessions → either block or ignore
+Keep logic simple for intern level.
+15.10 Notes
+•       Don't allow very long sessions (keep them reasonable, like under 1–2 hours)
+•       Always enforce some form of TTL or end condition
+•       Avoid making this too "smart" — correctness matters more than features
+15.11 Final Thought
+This feature basically upgrades the system from:
+"user clicks → action happens"
+to:
+"system runs automatically at the right time"
+It's a small addition conceptually, but it changes how the system behaves quite a lot and makes it closer to real-world automation systems.
+16. Final Notes & Practical Tips
+This project is not just about making something "work." The goal is to build something that behaves like a real automation system, even if the feature set is minimal. A few things to keep in mind while implementing:
+16.1 This is Automation — Not "Hit and Run"
+Do not treat tasks as one-time executions. Remember: this is an automation system, not just "hit and run". That means:
+•       The system should handle continuous execution
+•       It should deal with unexpected states
+•       It should recover from failures and interruptions
+•       It should behave consistently over time, not just once
+If something only works when you manually trigger it and watch it, it is not automation yet.
+16.2 Expect Things to Break
+In real usage:
+•       UI elements won't always be found
+•       Network will fail
+•       Spotify may show unexpected screens
+•       Devices will disconnect
+Your system should:
+•       Fail gracefully
+•       Retry where appropriate
+•       Log clearly what went wrong
+Avoid writing code that assumes "everything will work perfectly."
+16.3 Always Verify State
+Never assume an action succeeded. Examples:
+•       After clicking "Play" → confirm playback actually started
+•       After liking a song → verify the state changed
+•       After navigation → check correct screen
+If you skip verification, bugs will become very hard to debug later.
+16.4 Logging is Not Optional
+If something fails and you cannot tell why in 30 seconds by reading logs, your logging is not good enough. Always include:
+•       command_id
+•       device_id
+•       step name
+•       reason code (on failure)
+Clear logs are more valuable than adding new features.
+16.5 Keep It Simple
+Do not over-engineer:
+•       No need for complex schedulers
+•       No need for microservices
+•       No need for scaling concerns
+Focus on:
+•       Correctness
+•       Stability
+•       Clarity
+A simple system that runs reliably for 20+ hours is better than a complex one that breaks.
+16.6 Think in Systems, Not Files
+Don't think: "this API works" or "this function works." Think: "What happens from frontend → backend → device → back?" Trace the full flow:
+•       User action
+•       API call
+•       Command creation
+•       Device execution
+•       Result reporting
+That's where most real bugs appear.
+16.7 Test Like It's Real Usage
+Do not just test once. Run:
+•       Multiple tasks
+•       Longer sessions
+•       Repeated executions
+Watch for:
+•       Memory issues
+•       Stuck states
+•       Missed events
+The requirement is stability over time, not just correctness once.
+16.8 When in Doubt, Make It Observable
+If you're unsure about something:
+•       Add a log
+•       Add a status update
+•       Expose more information
+Invisible systems are impossible to debug.
+16.9 Final Reminder
+A working demo is not the goal.
+A stable, traceable, and predictable system is the goal.
+17. Evaluation Criteria
+The intern will be evaluated on the following dimensions at the end of each milestone:
+Milestone 1 Evaluation
+•       Documentation Comprehension (25%): Can the intern explain the full architecture, command lifecycle, and reason code taxonomy without referring to the doc?
+•       Environment Setup (25%): Are all three environments running without errors? Is the Accessibility Service enabled and confirmed in device settings?
+•       First Click Execution (25%): Did Spotify launch? Was a UI element located using node selectors? Was a click performed and confirmed?
+•       Logging Quality (25%): Do logs contain enough context to reconstruct what happened? Are reason codes present on failures?
+Milestone 2 Evaluation
+•       Correctness (30%): Do all implemented features work as specified? Are all step verifications in place?
+•       Stability (25%): Does the system run for 20+ hours without crashes, memory leaks, or stuck states?
+•       Observability (20%): Are logs complete, structured, and traceable for every command and session?
+•       Automation Quality (15%): Is human-like behavior implemented? Are delays randomized? Are limits enforced?
+•       Error Handling (10%): Are disconnects, pop-ups, login gates, and network failures handled gracefully with correct reason codes?
+18. Troubleshooting & Operations
+Device Issues
+•       Accessibility Service Not Found: Verify the service is declared in AndroidManifest.xml with the correct permission. Rebuild and reinstall the APK. Navigate to Settings → Accessibility → Installed Services.
+•       getRootInActiveWindow() Returns Null: Spotify may not be in the foreground. Ensure Spotify is the active app before calling any Accessibility Service methods.
+•       UI Element Not Found: Use Android Studio's Layout Inspector or uiautomatorviewer to inspect the live UI tree and verify the correct resource-id or content-desc. Spotify updates may change these values.
+•       APK Killed by OS: Ensure the Foreground Service is running with a visible notification. Check that battery optimization is disabled for the APK in device settings.
+Backend Issues
+•       WebSocket Connection Refused: Confirm the FastAPI server is running and the WebSocket endpoint URL is correct. Check firewall rules if connecting from a physical device.
+•       JWT Token Expired: Frontend should detect 401 responses and prompt the user to re-login. Increase ACCESS_TOKEN_EXPIRE_MINUTES for development.
+•       Device Not Receiving Commands: Check that the device is connected (verify in /devices endpoint). Confirm the WebSocket connection is alive with keep-alive pings in logcat.
+Spotify-Specific Issues
+•       Spotify Shows Login Screen: The APK must fail with LOGIN_REQUIRED and not attempt automation. Ensure a valid Spotify account is logged in on the device before running automation.
+•       Search Returns No Results: Check network connectivity on the device. Verify the search query is being set correctly in the input field (log the exact text being set).
+•       Playback Does Not Start: Confirm Spotify Premium is active (free accounts have playback restrictions). Check if a pop-up (ad, upsell, permission) is blocking the play button.
+19. Success Guidelines
+The following criteria define a successful project completion:
+Milestone 1 Success
+•       All documentation read and architecture understood — demonstrated by the mapping exercise.
+•       All three environments set up and independently verified.
+•       Spotify launches from the APK on the first attempt.
+•       At least one UI element located and clicked using Accessibility Service node selectors.
+•       Logcat shows structured logs with reason codes on the click action.
+Milestone 2 Success
+•       User can log in from the React UI, create a task, select a device, and click Run Now to trigger execution.
+•       All step events appear in the dashboard in real time with correct status badges.
+•       All core Spotify actions (search, play, like, save, follow, skip, add to playlist, create playlist) execute correctly end-to-end at least 5 consecutive times.
+•       Human-like behavior is active: randomized delays, occasional skips, randomized tap offsets are confirmed in logs.
+•       Session scheduling works: automation starts at the configured start_time and stops at end_time without manual intervention.
+•       The system runs for 20–40 hours with no crashes, no stuck tasks, no memory leaks.
+•       Any engineer reading the logs can reconstruct the full execution trace of any command within 30 seconds.

@@ -5,9 +5,13 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.pm.ServiceInfo;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
+import android.database.ContentObserver;
 import android.net.ConnectivityManager;
+import android.os.Build;
+import android.view.accessibility.AccessibilityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
@@ -35,16 +39,20 @@ import java.util.concurrent.Executors;
  *   4. stopWithTask=false in manifest — survives app being swiped from recents
  *   5. START_STICKY — OS restarts service if killed
  *   6. NetworkCallback — reconnects WebSocket the instant WiFi/mobile returns
- *   7. BootReceiver (SCREEN_ON / USER_PRESENT / BOOT_COMPLETED) — restarts service
+ *   7. BootReceiver (BOOT_COMPLETED only) — restarts via MainActivity trampoline
  *   8. Standby bucket set to ACTIVE via installDebug Gradle hook — Samsung won't throttle
  *
- * Note: The old programmatic REBIND (Settings.Secure OFF→ON toggle) has been removed.
- * Samsung Android 14 KNOX does not respond to Settings.Secure writes from a non-system
- * callingPackage — the write was silently accepted but never triggered a bind.
- * Binding is now handled by: SpotifyAccessibilityService.onDestroy() fires a notification
- * guiding the user to the exact Settings page when Samsung kills the binding.
+ * Accessibility is the anchor: WebSocket connects ONLY after onServiceConnected.
+ * Process kill was removed — it was crashing FGS and breaking Samsung bindings.
  */
 public class BotForegroundService extends Service implements BotWebSocketClient.CommandListener {
+
+    private static volatile BotForegroundService serviceInstance;
+
+    /** Live foreground service instance — used by executors to re-bind accessibility. */
+    public static BotForegroundService getInstance() {
+        return serviceInstance;
+    }
 
     private static final String TAG              = "SpotifyBot";
     private static final String CHANNEL_ID       = "spotifybot_service";
@@ -64,46 +72,256 @@ public class BotForegroundService extends Service implements BotWebSocketClient.
      */
     public static volatile BotWebSocketClient currentWs = null;
 
-    // ── Accessibility service health monitor ──────────────────────────────────
+    // ── Accessibility-gated WebSocket ─────────────────────────────────────────
     //
-    // Problem: Samsung kills SpotifyAccessibilityService (accessibility binding)
-    // while BotForegroundService (WebSocket) keeps running.  The device appears
-    // ONLINE in the dashboard but every command immediately fails with
-    // ACCESSIBILITY_SERVICE_NOT_RUNNING — a silent, confusing broken state.
-    //
-    // Fix: poll SpotifyAccessibilityService.instance every 15s.
-    // If it is null while the WebSocket is connected → disconnect the WebSocket
-    // so the backend marks the device OFFLINE (honest state).
-    // When the user re-enables the accessibility service, onServiceConnected()
-    // calls startForegroundService() which re-enters onStartCommand() and
-    // reconnects the WebSocket automatically.
-    private static final long   ACC_CHECK_INTERVAL_MS = 15_000;
-    private static final String ACC_DEAD_CHANNEL_ID   = "spotifybot_acc_dead";
-    private static final int    ACC_DEAD_NOTIF_ID     = 2002;
-    private final Handler       healthHandler         = new Handler(Looper.getMainLooper());
-    private final Runnable      healthCheck           = new Runnable() {
+    // WebSocket connects ONLY when SpotifyAccessibilityService.instance is set.
+    // This prevents the "zombie" state (WS online, automation impossible) and stops
+    // the connect→kill→reconnect loop that was aborting commands mid-flight.
+    private static final long   ACC_BINDING_CHECK_DELAY_MS   = 4_000;
+    private static final long   ACCESSIBILITY_WATCHDOG_MS     = 30_000;
+    private final Handler       healthHandler                 = new Handler(Looper.getMainLooper());
+    private boolean             pendingReconnectAfterCommand  = false;
+    private boolean             zombieNotified                = false;
+    private boolean             bindingCheckScheduled         = false;
+    private boolean             zombieRestartAttempted        = false;
+
+    /** After Settings change: wait, then cold-restart once if still unbound (Samsung bind path). */
+    private final Runnable bindingCheckAfterSettings = new Runnable() {
+        @Override
+        public void run() {
+            bindingCheckScheduled = false;
+            if (SpotifyAccessibilityService.instance != null) {
+                zombieNotified = false;
+                zombieRestartAttempted = false;
+                connectWebSocketIfReady();
+                return;
+            }
+            if (!SetupHelper.isRestrictedSettingsAllowed(BotForegroundService.this)) {
+                updateNotification("Allow restricted settings in App Info");
+                return;
+            }
+            if (SetupHelper.isAccessibilityEnabled(BotForegroundService.this)) {
+                // Settings ON but binding never fired (Samsung zombie). Recovery is now
+                // silent + notification-driven: ensure the component is enabled, then let
+                // the user reopen Settings by TAPPING the zombie notification. We never
+                // auto-launch Settings here — that stole focus from the "Allow full
+                // control" dialog and was itself preventing the bind from completing.
+                Log.w(TAG, "[SERVICE_FG] Settings ON, still unbound — silent recovery + notification");
+                ProcessRecovery.restartProcessForBinding(BotForegroundService.this);
+                updateNotification("Accessibility stuck — tap notification to fix");
+                if (!zombieNotified) {
+                    zombieNotified = true;
+                    showZombieRebindNotification();
+                }
+            } else {
+                updateNotification("Waiting for accessibility…");
+            }
+        }
+    };
+
+    /** Slow watchdog — no spam, just ensure recovery is scheduled once. */
+    private final Runnable accessibilityWatchdog = new Runnable() {
         @Override
         public void run() {
             if (SpotifyAccessibilityService.instance == null) {
                 if (wsClient != null && wsClient.isAuthenticated()) {
-                    Log.w(TAG, "[SERVICE_FG] ⚠ Accessibility service dead while WebSocket is "
-                            + "live — disconnecting so device shows OFFLINE in dashboard");
-                    wsClient.disconnect();
-                    wsClient  = null;
-                    currentWs = null;
-                    updateNotification("⚠ Accessibility off — re-enable SpotifyBot in Settings");
-                    showAccessibilityDeadNotification();
+                    disconnectWebSocket("watchdog: ws without accessibility");
                 }
+                ensureAccessibilityRecoveryRunning();
+            } else {
+                connectWebSocketIfReady();
             }
-            healthHandler.postDelayed(this, ACC_CHECK_INTERVAL_MS);
+            healthHandler.postDelayed(this, ACCESSIBILITY_WATCHDOG_MS);
         }
     };
+
+    private boolean isAccessibilityZombie() {
+        return SetupHelper.isAccessibilityZombie(this);
+    }
+
+    /**
+     * Connect WebSocket only when accessibility is bound.
+     * If not bound, stay offline and run the accessibility recovery loop.
+     */
+    private void connectWebSocketIfReady() {
+        if (SpotifyAccessibilityService.instance == null) {
+            if (isAccessibilityZombie()) {
+                Log.w(TAG, "[SERVICE_FG] ZOMBIE — settings ON but binding null, WS stays offline");
+            } else {
+                Log.i(TAG, "[SERVICE_FG] WS deferred — accessibility not enabled");
+            }
+            disconnectWebSocket("accessibility not bound");
+            ensureAccessibilityRecoveryRunning();
+            updateNotification(isAccessibilityZombie()
+                    ? "Accessibility stuck — tap notification to fix"
+                    : "Waiting for accessibility…");
+            return;
+        }
+
+        if (wsClient != null && wsClient.isAuthenticated()) {
+            updateNotification("Connected — waiting for commands");
+            return;
+        }
+        // Client is non-null and still self-reconnecting (connecting now, or sleeping
+        // between exponential-backoff attempts). Do NOT tear it down and build a new one
+        // here — recreating mid-reconnect opens a second socket that the backend
+        // force-closes ("Replaced by new connection"), which the phone sees as a Broken
+        // pipe and reconnects again: an infinite flap. Let the existing client finish.
+        if (wsClient != null && wsClient.isAlive()) {
+            return;
+        }
+
+        if (commandRouter == null) {
+            commandRouter = new CommandRouter(this);
+        }
+
+        if (wsClient != null) {
+            wsClient.disconnect();
+            wsClient = null;
+            currentWs = null;
+        }
+
+        wsClient  = new BotWebSocketClient(this, this);
+        currentWs = wsClient;
+        wsClient.connect();
+        updateNotification("Connecting…");
+        Log.i(TAG, "[SERVICE_FG] WebSocket connect started (accessibility bound)");
+    }
+
+    /** Intentional disconnect — does not auto-reconnect until accessibility binds. */
+    private void disconnectWebSocket(String reason) {
+        if (wsClient == null) return;
+        Log.i(TAG, "[SERVICE_FG] WS disconnect: " + reason);
+        wsClient.disconnect();
+        wsClient  = null;
+        currentWs = null;
+    }
+
+    private void scheduleBindingCheck() {
+        if (bindingCheckScheduled) return;
+        bindingCheckScheduled = true;
+        healthHandler.removeCallbacks(bindingCheckAfterSettings);
+        healthHandler.postDelayed(bindingCheckAfterSettings, ACC_BINDING_CHECK_DELAY_MS);
+        Log.d(TAG, "[SERVICE_FG] Binding check scheduled in " + ACC_BINDING_CHECK_DELAY_MS + "ms");
+    }
+
+    private void ensureAccessibilityRecoveryRunning() {
+        if (SpotifyAccessibilityService.instance != null) return;
+
+        if (!SetupHelper.isRestrictedSettingsAllowed(this)) {
+            updateNotification("Allow restricted settings in App Info");
+            return;
+        }
+
+        if (isAccessibilityZombie()) {
+            updateNotification("Accessibility stuck — tap notification to fix");
+            if (!zombieNotified) {
+                zombieNotified = true;
+                showZombieRebindNotification();
+            }
+            scheduleBindingCheck();
+            return;
+        }
+
+        if (!SetupHelper.isAccessibilityEnabled(this)) {
+            updateNotification("Enable SpotifyBot in Accessibility Settings");
+        }
+        scheduleBindingCheck();
+    }
+
+    /** Called from SpotifyAccessibilityService.onServiceConnected. */
+    public static void onAccessibilityBound() {
+        BotForegroundService inst = serviceInstance;
+        if (inst == null) return;
+        inst.zombieNotified = false;
+        inst.zombieRestartAttempted = false;
+        inst.bindingCheckScheduled = false;
+        inst.healthHandler.removeCallbacks(inst.bindingCheckAfterSettings);
+        inst.connectWebSocketIfReady();
+    }
+
+    /** Called from SpotifyAccessibilityService.onDestroy. */
+    public static void onAccessibilityLost() {
+        BotForegroundService inst = serviceInstance;
+        if (inst == null) return;
+        inst.disconnectWebSocket("accessibility onDestroy");
+        inst.ensureAccessibilityRecoveryRunning();
+        inst.updateNotification("Accessibility lost — recovering…");
+    }
+
+    private static final String ACC_DEAD_CHANNEL_ID          = "spotifybot_acc_dead";
+    private static final int    ACC_DEAD_NOTIF_ID            = 2002;
+    private static final int    BATTERY_FIX_NOTIF_ID         = 2003;
+    private static final String BATTERY_FIX_CHANNEL          = "spotifybot_battery_fix";
+
+    // Polls every 20s — if the socket is a zombie (claims connected but PONG is stale),
+    // kill it and open a fresh connection immediately.
+    private static final long WS_WATCHDOG_INTERVAL_MS = 20_000;
+    private final Runnable wsWatchdog = new Runnable() {
+        @Override
+        public void run() {
+            if (wsClient != null && !SpotifyExecutor.isCommandInProgress()) {
+                if (SpotifyAccessibilityService.instance == null) {
+                    disconnectWebSocket("ws-watchdog: no accessibility");
+                } else if (wsClient.isAuthenticated() && !wsClient.isHealthy()) {
+                    Log.w(TAG, "[SERVICE_FG] WS watchdog — zombie connection"
+                            + " (last PONG " + wsClient.getLastPongAgeMs() + "ms ago)");
+                    wsClient.forceReconnect();
+                    updateNotification("Reconnecting — fixing stale connection…");
+                } else if (!wsClient.isAuthenticated() && !wsClient.isConnected()
+                        && !wsClient.isConnecting() && !wsClient.isAlive()) {
+                    // Only recreate when the client is genuinely abandoned. While it is
+                    // mid-backoff (isAlive() == true) it will reconnect on its own —
+                    // recreating it here would open a duplicate socket and flap.
+                    Log.w(TAG, "[SERVICE_FG] WS watchdog — client abandoned, recreating");
+                    connectWebSocketIfReady();
+                }
+            }
+            healthHandler.postDelayed(this, WS_WATCHDOG_INTERVAL_MS);
+        }
+    };
+
+    /** Called when a command finishes — run any reconnect that was deferred mid-run. */
+    public static void onCommandFinished() {
+        BotForegroundService inst = serviceInstance;
+        if (inst == null) return;
+        if (inst.pendingReconnectAfterCommand) {
+            inst.pendingReconnectAfterCommand = false;
+            inst.connectWebSocketIfReady();
+            return;
+        }
+        if (inst.wsClient != null && inst.wsClient.isAuthenticated()
+                && !inst.wsClient.isHealthy()) {
+            inst.requestReconnect("unhealthy after command");
+        }
+    }
+
+    private void requestReconnect(String reason) {
+        Log.w(TAG, "[SERVICE_FG] WS reconnect: " + reason);
+        if (SpotifyExecutor.isCommandInProgress()) {
+            pendingReconnectAfterCommand = true;
+            Log.i(TAG, "[SERVICE_FG] Reconnect deferred until command completes");
+            return;
+        }
+        connectWebSocketIfReady();
+    }
+
+    // ── Accessibility settings observer ──────────────────────────────────────
+    //
+    // Watches for changes to ENABLED_ACCESSIBILITY_SERVICES.  Fires the instant
+    // the user toggles SpotifyBot in Settings.  If instance is still null at that
+    // point we are in the Samsung zombie state (Settings=ON but no onServiceConnected
+    // callback) — restart the process so Android properly binds the service.
+    private ContentObserver accSettingsObserver;
+    private AccessibilityManager accessibilityManager;
+    private AccessibilityManager.AccessibilityServicesStateChangeListener accServicesListener;
 
     // ── Service lifecycle ─────────────────────────────────────────────────────
 
     @Override
     public void onCreate() {
         super.onCreate();
+        serviceInstance = this;
         // Resolve device ID first — everything else (registration, WebSocket URL) depends on it
         AppConfig.initDeviceId(this);
         Log.i(TAG, "[SERVICE_FG] Foreground service created — device=" + AppConfig.getDeviceId());
@@ -123,12 +341,16 @@ public class BotForegroundService extends Service implements BotWebSocketClient.
         // the reliable alternative.
         registerNetworkCallback();
 
-        // Start the accessibility service health monitor.
-        // First check fires after 15s — gives the accessibility service time to bind
-        // on initial startup before we start evaluating its state.
-        healthHandler.postDelayed(healthCheck, ACC_CHECK_INTERVAL_MS);
-        Log.i(TAG, "[SERVICE_FG] Accessibility health monitor started (interval="
-                + ACC_CHECK_INTERVAL_MS / 1000 + "s)");
+        // NOTE: healthCheck removed — replaced by zombieWatchdog which kills WS immediately
+        // when accessibility is unbound while the socket still shows authenticated.
+
+        // Register ContentObserver so we react the instant the user changes the
+        // accessibility setting — no need to wait for the next poll cycle.
+        registerAccessibilityObserver();
+        registerAccessibilityStateListener();
+        healthHandler.postDelayed(accessibilityWatchdog, ACCESSIBILITY_WATCHDOG_MS);
+        healthHandler.postDelayed(wsWatchdog, WS_WATCHDOG_INTERVAL_MS);
+        healthHandler.post(() -> connectWebSocketIfReady());
     }
 
     @Override
@@ -136,43 +358,46 @@ public class BotForegroundService extends Service implements BotWebSocketClient.
         Log.i(TAG, "[SERVICE_FG] onStartCommand called");
 
         // Must call startForeground before any early return (Android requirement)
-        String notifText = (wsClient != null && wsClient.isAuthenticated())
-                ? "Connected — waiting for commands" : "Connecting…";
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, buildNotification(notifText),
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        String notifText;
+        if (SpotifyAccessibilityService.instance == null) {
+            notifText = isAccessibilityZombie()
+                    ? "Accessibility stuck — recovering…"
+                    : "Waiting for accessibility…";
+        } else if (wsClient != null && wsClient.isAuthenticated()) {
+            notifText = "Connected — waiting for commands";
         } else {
-            startForeground(NOTIFICATION_ID, buildNotification(notifText));
+            notifText = "Connecting…";
+        }
+        if (!promoteToForeground(notifText)) {
+            return START_NOT_STICKY;
         }
 
-        // Guard — if already fully authenticated, skip reconnect entirely.
-        // BootReceiver fires SCREEN_ON on every unlock, and SpotifyAccessibilityService
-        // auto-starts this service on every onServiceConnected. Without this guard every
-        // unlock would tear down and re-open the WebSocket, causing the "offline" flicker
-        // and duplicate connection race conditions on the backend.
-        if (wsClient != null && wsClient.isAuthenticated()) {
-            Log.i(TAG, "[SERVICE_FG] Already connected and authenticated — skipping reconnect");
+        // Never tear down the WebSocket while a command is executing on the phone.
+        if (SpotifyExecutor.isCommandInProgress()) {
+            Log.d(TAG, "[SERVICE_FG] onStartCommand during command — leaving WS alone");
             return START_STICKY;
         }
 
-        // Not authenticated — safe to (re)initialise
-        commandRouter = new CommandRouter(this);
-
+        // Guard — if already authenticated or mid-connect, skip re-init.
+        // SpotifyAccessibilityService auto-starts this on onServiceConnected.
+        // BootReceiver no longer fires on every screen unlock.
         if (wsClient != null) {
-            Log.w(TAG, "[SERVICE_FG] Stale WS client found — disconnecting before reconnect");
-            wsClient.disconnect();
-            wsClient = null;
-            currentWs = null;
+            if (wsClient.isAuthenticated() || wsClient.isConnecting()) {
+                if (wsClient.isAuthenticated() && !wsClient.isConnected()) {
+                    requestReconnect("socket dead (onStartCommand)");
+                }
+                return START_STICKY;
+            }
+            // Still self-reconnecting (mid-backoff) — don't recreate on a START_STICKY
+            // redelivery; that would race the in-flight reconnect into a duplicate socket.
+            if (wsClient.isAlive()) {
+                return START_STICKY;
+            }
+            disconnectWebSocket("stale client onStartCommand");
         }
 
-        // Device registration is handled automatically by the backend on first WebSocket
-        // connection (DEVICE_HELLO auto-registers any device with a valid shared secret).
-        // No separate HTTP registration call needed.
-
-        // BotWebSocketClient owns the full connect lifecycle: discovery → socket → auth.
-        wsClient = new BotWebSocketClient(BotForegroundService.this, BotForegroundService.this);
-        currentWs = wsClient;   // expose live socket globally for executor COMMAND_DONE retry
-        wsClient.connect();
+        commandRouter = new CommandRouter(this);
+        connectWebSocketIfReady();
 
         return START_STICKY;
     }
@@ -180,8 +405,13 @@ public class BotForegroundService extends Service implements BotWebSocketClient.
     @Override
     public void onDestroy() {
         super.onDestroy();
+        if (serviceInstance == this) serviceInstance = null;
         Log.i(TAG, "[SERVICE_FG] Foreground service destroyed");
-        healthHandler.removeCallbacks(healthCheck);
+        healthHandler.removeCallbacks(accessibilityWatchdog);
+        healthHandler.removeCallbacks(bindingCheckAfterSettings);
+        healthHandler.removeCallbacks(wsWatchdog);
+        unregisterAccessibilityObserver();
+        unregisterAccessibilityStateListener();
         unregisterNetworkCallback();
         if (wsClient != null) wsClient.disconnect();
         if (ioExecutor != null) ioExecutor.shutdown();
@@ -194,6 +424,85 @@ public class BotForegroundService extends Service implements BotWebSocketClient.
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    // ── Accessibility observer helpers ───────────────────────────────────────
+
+    /**
+     * Register a ContentObserver on ENABLED_ACCESSIBILITY_SERVICES.
+     * Fires whenever the user enables or disables any accessibility service.
+     * If SpotifyBot is toggled ON while instance is still null, trigger rebind recovery.
+     */
+    private void registerAccessibilityObserver() {
+        accSettingsObserver = new ContentObserver(healthHandler) {
+            @Override
+            public void onChange(boolean selfChange) {
+                Log.d(TAG, "[SERVICE_FG] Accessibility settings changed");
+                scheduleBindingCheck();
+            }
+        };
+        getContentResolver().registerContentObserver(
+                Settings.Secure.getUriFor(Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES),
+                false,
+                accSettingsObserver);
+        Log.i(TAG, "[SERVICE_FG] Accessibility settings observer registered");
+    }
+
+    private void unregisterAccessibilityObserver() {
+        if (accSettingsObserver != null) {
+            try {
+                getContentResolver().unregisterContentObserver(accSettingsObserver);
+            } catch (Exception ignored) {}
+            accSettingsObserver = null;
+        }
+    }
+
+    /** React when the system rebinding accessibility services (Samsung recovery path). */
+    private void registerAccessibilityStateListener() {
+        accessibilityManager = getSystemService(AccessibilityManager.class);
+        if (accessibilityManager == null) return;
+
+        accServicesListener = am -> {
+            Log.d(TAG, "[SERVICE_FG] System accessibility services changed");
+            scheduleBindingCheck();
+        };
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            accessibilityManager.addAccessibilityServicesStateChangeListener(
+                    r -> healthHandler.post(r), accServicesListener);
+        }
+        Log.i(TAG, "[SERVICE_FG] AccessibilityServicesStateChangeListener registered");
+    }
+
+    private void unregisterAccessibilityStateListener() {
+        if (accessibilityManager != null && accServicesListener != null) {
+            try {
+                accessibilityManager.removeAccessibilityServicesStateChangeListener(
+                        accServicesListener);
+            } catch (Exception ignored) {}
+        }
+        accServicesListener = null;
+        accessibilityManager = null;
+    }
+
+    /**
+     * Check whether SpotifyBot's accessibility service is listed as enabled in
+     * Settings.Secure — this is the same check MainActivity uses for its status UI.
+     * Returns true even if the actual binding is dead (Samsung zombie state).
+     */
+    private boolean isAccessibilityServiceEnabled() {
+        String expectedService = getPackageName() + "/"
+                + SpotifyAccessibilityService.class.getName();
+        try {
+            int enabled = Settings.Secure.getInt(getContentResolver(),
+                    Settings.Secure.ACCESSIBILITY_ENABLED);
+            if (enabled != 1) return false;
+        } catch (Settings.SettingNotFoundException e) {
+            return false;
+        }
+        String services = Settings.Secure.getString(getContentResolver(),
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        return services != null && services.contains(expectedService);
     }
 
     // ── Network reconnect (WiFi / mobile data change) ─────────────────────────
@@ -210,21 +519,27 @@ public class BotForegroundService extends Service implements BotWebSocketClient.
         ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
         if (cm == null) return;
 
+        // Restrict to WiFi only — USB ADB creates an RNDIS interface that also
+        // reports NET_CAPABILITY_INTERNET, which would trigger a reconnect attempt
+        // routed over USB (where the backend is unreachable).
         NetworkRequest req = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
                 .build();
 
         networkCallback = new ConnectivityManager.NetworkCallback() {
             @Override
             public void onAvailable(Network network) {
                 Log.i(TAG, "[SERVICE_FG] Network became available — checking WebSocket state");
-                if (wsClient != null && !wsClient.isAuthenticated()) {
-                    Log.i(TAG, "[SERVICE_FG] Not authenticated — triggering reconnect");
-                    wsClient.connect();
+                if (SpotifyExecutor.isCommandInProgress()) {
+                    pendingReconnectAfterCommand = true;
+                    return;
+                }
+                if (wsClient != null && !wsClient.isAuthenticated() && !wsClient.isConnecting()) {
+                    Log.i(TAG, "[SERVICE_FG] Network available — reconnect if accessibility bound");
+                    connectWebSocketIfReady();
                 } else if (wsClient == null) {
-                    // Service was just created and wsClient hasn't been assigned yet.
-                    // onStartCommand will handle the connect; nothing to do here.
-                    Log.d(TAG, "[SERVICE_FG] Network available but wsClient not yet initialised — ignored");
+                    connectWebSocketIfReady();
                 }
             }
         };
@@ -254,24 +569,102 @@ public class BotForegroundService extends Service implements BotWebSocketClient.
     public void onConnected() {
         Log.i(TAG, "[SERVICE_FG] WebSocket connected and authenticated");
         updateNotification("Connected — waiting for commands");
+        zombieNotified = false;
+    }
+
+    @Override
+    public void onConnectionStale() {
+        Log.w(TAG, "[SERVICE_FG] Connection stale — zombie socket being replaced");
+        updateNotification("Reconnecting — stale connection…");
     }
 
     @Override
     public void onDisconnected() {
-        Log.w(TAG, "[SERVICE_FG] WebSocket disconnected — reconnecting…");
+        if (wsClient == null) {
+            Log.d(TAG, "[SERVICE_FG] WS closed intentionally — no auto-reconnect");
+            return;
+        }
+        Log.w(TAG, "[SERVICE_FG] WebSocket disconnected — client will self-reconnect");
         updateNotification("Reconnecting…");
+        healthHandler.postDelayed(() -> {
+            if (SpotifyExecutor.isCommandInProgress()) {
+                pendingReconnectAfterCommand = true;
+                return;
+            }
+            if (SpotifyAccessibilityService.instance == null) {
+                Log.i(TAG, "[SERVICE_FG] Accessibility off — tearing down WS");
+                disconnectWebSocket("disconnected without accessibility");
+                return;
+            }
+            // BotWebSocketClient reconnects itself with exponential backoff. Only step
+            // in if it has actually been abandoned (intentionally closed) — otherwise
+            // creating a fresh client here races the in-flight reconnect and produces a
+            // duplicate socket → Broken-pipe flap loop.
+            if (wsClient != null && wsClient.isAlive()) {
+                Log.d(TAG, "[SERVICE_FG] WS self-reconnecting — leaving existing client alone");
+                return;
+            }
+            connectWebSocketIfReady();
+        }, 2_000);
     }
 
     @Override
     public void onCommandReceived(JsonObject command) {
         String actionType = command.has("action_type")
                 ? command.get("action_type").getAsString() : "?";
-        Log.i(TAG, "[SERVICE_FG] Command received: " + actionType);
+        Log.i(TAG, "[SERVICE_FG] Command received: " + actionType
+                + " acc=" + (SpotifyAccessibilityService.instance != null ? "ON" : "OFF"));
         updateNotification("Executing: " + actionType);
+        if (commandRouter == null) {
+            Log.e(TAG, "[SERVICE_FG] commandRouter is null — reinitializing");
+            commandRouter = new CommandRouter(this);
+        }
+        if (SpotifyAccessibilityService.instance == null) {
+            ensureAccessibilityRecoveryRunning();
+        }
         commandRouter.execute(command, wsClient);
     }
 
     // ── Notification helpers ──────────────────────────────────────────────────
+
+    /**
+     * Promote to foreground FGS. On Android 14+ background starts of dataSync FGS
+     * throw ForegroundServiceStartNotAllowedException — fall back to MainActivity trampoline.
+     */
+    private boolean promoteToForeground(String notifText) {
+        Notification notification = buildNotification(notifText);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(NOTIFICATION_ID, notification,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+            } else {
+                startForeground(NOTIFICATION_ID, notification);
+            }
+            return true;
+        } catch (Exception specialUseErr) {
+            Log.w(TAG, "[SERVICE_FG] specialUse startForeground failed: "
+                    + specialUseErr.getMessage());
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    startForeground(NOTIFICATION_ID, notification,
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+                } else {
+                    startForeground(NOTIFICATION_ID, notification);
+                }
+                Log.i(TAG, "[SERVICE_FG] FGS promoted via dataSync fallback");
+                return true;
+            } catch (Exception fallbackErr) {
+                Log.e(TAG, "[SERVICE_FG] startForeground failed — activity trampoline: "
+                        + fallbackErr.getMessage());
+                ProcessRecovery.launchServiceViaActivity(this);
+                stopSelf();
+                return false;
+            }
+        }
+    }
 
     private void createNotificationChannel() {
         NotificationChannel channel = new NotificationChannel(
@@ -285,12 +678,18 @@ public class BotForegroundService extends Service implements BotWebSocketClient.
     }
 
     private Notification buildNotification(String status) {
+        Intent launch = new Intent(this, MainActivity.class);
+        launch.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pi = PendingIntent.getActivity(
+                this, 0, launch,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("SpotifyBot")
                 .setContentText(status)
                 .setSmallIcon(android.R.drawable.ic_media_play)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setContentIntent(pi)
                 .build();
     }
 
@@ -298,6 +697,92 @@ public class BotForegroundService extends Service implements BotWebSocketClient.
         NotificationManager manager = getSystemService(NotificationManager.class);
         if (manager != null) {
             manager.notify(NOTIFICATION_ID, buildNotification(status));
+        }
+    }
+
+    /**
+     * Fire a high-priority "tap to fix" notification after the accessibility service
+     * has been dead for ACC_DEAD_BATTERY_AFTER × ACC_DEAD_RECONNECT_MS seconds.
+     *
+     * Tapping opens MainActivity with EXTRA_BATTERY_FIX=true which immediately triggers
+     * the system ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS dialog.  On Samsung One UI,
+     * approving that dialog adds the app to "Never sleeping apps" (Background usage limits),
+     * which lifts Samsung's battery-based block on accessibility service binding.
+     */
+    /** Called when a command timed out waiting for accessibility bind. */
+    public static void handleAccessibilityDead() {
+        BotForegroundService inst = serviceInstance;
+        if (inst == null) return;
+        inst.ensureAccessibilityRecoveryRunning();
+        inst.showAccessibilityDeadNotification();
+    }
+
+    /** Brings MainActivity to front for battery fix only — no Settings.Secure writes. */
+    private void launchZombieRecovery() {
+        try {
+            Intent intent = new Intent(this, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            intent.putExtra(MainActivity.EXTRA_ZOMBIE_RECOVERY, true);
+            intent.putExtra(MainActivity.EXTRA_BATTERY_FIX, true);
+            startActivity(intent);
+            Log.i(TAG, "[SERVICE_FG] Launched zombie recovery (battery fix only)");
+        } catch (Exception e) {
+            Log.w(TAG, "[SERVICE_FG] Zombie recovery launch failed: " + e.getMessage());
+            showBatteryFixNotification();
+        }
+    }
+
+    /** Brings MainActivity to front and runs silent setup (one system dialog max). */
+    private void launchSilentSetup() {
+        try {
+            Intent intent = new Intent(this, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            intent.putExtra(SetupHelper.EXTRA_AUTO_SETUP, true);
+            intent.putExtra(MainActivity.EXTRA_BATTERY_FIX, true);
+            startActivity(intent);
+            Log.i(TAG, "[SERVICE_FG] Launched silent setup via MainActivity");
+        } catch (Exception e) {
+            Log.w(TAG, "[SERVICE_FG] Silent setup launch failed: " + e.getMessage());
+            showBatteryFixNotification();
+        }
+    }
+
+    private void showBatteryFixNotification() {
+        try {
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            if (nm == null) return;
+
+            NotificationChannel channel = new NotificationChannel(
+                    BATTERY_FIX_CHANNEL,
+                    "SpotifyBot Battery Fix",
+                    NotificationManager.IMPORTANCE_HIGH);
+            channel.enableVibration(true);
+            nm.createNotificationChannel(channel);
+
+            Intent fixIntent = new Intent(this, MainActivity.class);
+            fixIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            fixIntent.putExtra(MainActivity.EXTRA_BATTERY_FIX, true);
+            PendingIntent pi = PendingIntent.getActivity(
+                    this, BATTERY_FIX_NOTIF_ID, fixIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+            Notification notif = new androidx.core.app.NotificationCompat.Builder(this, BATTERY_FIX_CHANNEL)
+                    .setContentTitle("⚡ SpotifyBot: Fix Battery Restriction")
+                    .setContentText("Samsung is blocking the bot. Tap to open battery fix (2 taps).")
+                    .setStyle(new androidx.core.app.NotificationCompat.BigTextStyle()
+                            .bigText("Samsung battery restrictions are preventing SpotifyBot "
+                                    + "from running.\n\nTap this notification — SpotifyBot will "
+                                    + "open a system dialog. Tap  Allow  to permanently fix it."))
+                    .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                    .setContentIntent(pi)
+                    .setAutoCancel(true)
+                    .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+                    .build();
+
+            nm.notify(BATTERY_FIX_NOTIF_ID, notif);
+            Log.i(TAG, "[SERVICE_FG] Battery-fix notification fired");
+        } catch (Exception e) {
+            Log.e(TAG, "[SERVICE_FG] Failed to show battery-fix notification: " + e.getMessage());
         }
     }
 
@@ -314,6 +799,14 @@ public class BotForegroundService extends Service implements BotWebSocketClient.
      * the same fix, but having both ensures the user sees the alert regardless of
      * which component detects the problem first.
      */
+    /** Called by SpotifyAccessibilityService.onServiceConnected() — clears stale dead-alerts. */
+    static void cancelAccessibilityAlerts(Context ctx) {
+        try {
+            NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null) nm.cancel(ACC_DEAD_NOTIF_ID);
+        } catch (Exception ignored) {}
+    }
+
     private void showAccessibilityDeadNotification() {
         try {
             NotificationManager nm = getSystemService(NotificationManager.class);
@@ -350,6 +843,57 @@ public class BotForegroundService extends Service implements BotWebSocketClient.
             Log.i(TAG, "[SERVICE_FG] Accessibility-dead notification fired");
         } catch (Exception e) {
             Log.e(TAG, "[SERVICE_FG] Failed to show accessibility-dead notification: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Zombie-specific alert: Settings toggle is ON but the service never bound.
+     * Process restart often fixes this; if not, user must toggle OFF → ON manually.
+     */
+    private void showZombieRebindNotification() {
+        try {
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            if (nm == null) return;
+
+            NotificationChannel channel = new NotificationChannel(
+                    ACC_DEAD_CHANNEL_ID,
+                    "SpotifyBot Accessibility Alert",
+                    NotificationManager.IMPORTANCE_HIGH);
+            channel.enableVibration(true);
+            nm.createNotificationChannel(channel);
+
+            android.content.ComponentName cn = new android.content.ComponentName(
+                    this, SpotifyAccessibilityService.class);
+            Intent intent;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent = new Intent("android.settings.ACCESSIBILITY_DETAILS_SETTINGS");
+                intent.putExtra("android.provider.extra.ACCESSIBILITY_SERVICE_COMPONENT_NAME",
+                        cn.flattenToString());
+            } else {
+                intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            PendingIntent pi = PendingIntent.getActivity(
+                    this, 1, intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+            Notification notif = new androidx.core.app.NotificationCompat.Builder(this, ACC_DEAD_CHANNEL_ID)
+                    .setContentTitle("⚠ SpotifyBot: Accessibility stuck (zombie)")
+                    .setContentText("Toggle looks ON but service is dead. Tap → OFF then ON")
+                    .setStyle(new androidx.core.app.NotificationCompat.BigTextStyle()
+                            .bigText("Samsung left accessibility ON without a live binding.\n\n"
+                                    + "Tap → find SpotifyBot → toggle OFF → wait 2s → toggle ON.\n\n"
+                                    + "The device will reconnect when the binding returns."))
+                    .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                    .setContentIntent(pi)
+                    .setAutoCancel(true)
+                    .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+                    .build();
+
+            nm.notify(ACC_DEAD_NOTIF_ID, notif);
+            Log.w(TAG, "[SERVICE_FG] Zombie rebind notification fired");
+        } catch (Exception e) {
+            Log.e(TAG, "[SERVICE_FG] Failed to show zombie notification: " + e.getMessage());
         }
     }
 }

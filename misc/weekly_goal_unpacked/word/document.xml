@@ -1,0 +1,2391 @@
+<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml" xmlns:sl="http://schemas.openxmlformats.org/schemaLibrary/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:lc="http://schemas.openxmlformats.org/drawingml/2006/lockedCanvas" xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml" xmlns:w16="http://schemas.microsoft.com/office/word/2018/wordml" xmlns:w16cex="http://schemas.microsoft.com/office/word/2018/wordml/cex" xmlns:w16cid="http://schemas.microsoft.com/office/word/2016/wordml/cid" xmlns="http://schemas.microsoft.com/office/tasks/2019/documenttasks" xmlns:cr="http://schemas.microsoft.com/office/comments/2020/reactions">
+  <w:body>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000001">
+      <w:pPr>
+        <w:pStyle w:val="Heading3"/>
+        <w:keepNext w:val="0"/>
+        <w:keepLines w:val="0"/>
+        <w:spacing w:before="280" w:lineRule="auto"/>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="26"/>
+          <w:szCs w:val="26"/>
+        </w:rPr>
+      </w:pPr>
+      <w:bookmarkStart w:colFirst="0" w:colLast="0" w:name="_j6bsukopmedg" w:id="0"/>
+      <w:bookmarkEnd w:id="0"/>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="26"/>
+          <w:szCs w:val="26"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Weekly Goal Creation and Submission Process</w:t>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000002">
+      <w:pPr>
+        <w:pStyle w:val="Heading4"/>
+        <w:keepNext w:val="0"/>
+        <w:keepLines w:val="0"/>
+        <w:spacing w:after="40" w:before="240" w:lineRule="auto"/>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+        </w:rPr>
+      </w:pPr>
+      <w:bookmarkStart w:colFirst="0" w:colLast="0" w:name="_6bapz06uyrug" w:id="1"/>
+      <w:bookmarkEnd w:id="1"/>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">1. Overview of Goal Structure</w:t>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000003">
+      <w:pPr>
+        <w:spacing w:after="240" w:before="240" w:lineRule="auto"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Each developer will create three goals per week:</w:t>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000004">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="240" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Automatically Created Goals</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">:</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000005">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Setting Goals for the Next Week</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: This goal is a suggestion for the Lead Dev to review and plan tasks for the upcoming week.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000006">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Goal Submission</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: This is for submitting your goal by Friday for validation.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000007">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Self-Created Goal (this goal is created by the developer on their own)</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">:</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000008">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:after="240" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Week Goals</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: This includes a problem statement, acceptance criteria, and a solution approach. This goal must be created on Monday and is submitted to ensure all the settings are aligned and accurate for validation.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000009">
+      <w:pPr>
+        <w:pStyle w:val="Heading4"/>
+        <w:keepNext w:val="0"/>
+        <w:keepLines w:val="0"/>
+        <w:spacing w:after="40" w:before="240" w:lineRule="auto"/>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+        </w:rPr>
+      </w:pPr>
+      <w:bookmarkStart w:colFirst="0" w:colLast="0" w:name="_xxru0nzdnmz0" w:id="2"/>
+      <w:bookmarkEnd w:id="2"/>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">2. Self-Created Goal Breakdown</w:t>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000000A">
+      <w:pPr>
+        <w:spacing w:after="240" w:before="240" w:lineRule="auto"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">When you create your Week Goals, follow these steps:</w:t>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000000B">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="6"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="240" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Title</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: Make sure the title is clear and concise, including the task's main objective and the dates (e.g., &quot;Add 'Task Deadline' Feature (Feb 25 - Mar 1)&quot;).</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000000C">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="6"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Problem Statement</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: Clearly describe the issue or feature being implemented (e.g., &quot;Currently, users cannot set task deadlines&quot;).</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000000D">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="6"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Solution Approach</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: Outline the steps and features you're implementing to solve the issue. Break it down into specific actions.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000000E">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="6"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Acceptance Criteria</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">:</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000000F">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="6"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Functional behavior</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: Describe what the feature must do (e.g., &quot;Users can set and view task deadlines&quot;).</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000010">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="6"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Performance metrics</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: Define the expected performance standards (e.g., &quot;The deadline field should load within 1 second&quot;).</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000011">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="6"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Tests written</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: Mention the tests that need to be created.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000012">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="6"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Reviewed &amp; deployed</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: Confirm the status of code review and deployment.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000013">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="6"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Checkboxes (after Acceptance Criteria)</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: For each task in your solution approach, add checkboxes for each action step. These will help track your progress throughout the week. Example:</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000014">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="6"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Implement &quot;Deadline&quot; field for tasks</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000015">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="6"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Add validation for future deadlines</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000016">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="6"/>
+        </w:numPr>
+        <w:spacing w:after="240" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Test email notification feature</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000017">
+      <w:pPr>
+        <w:pStyle w:val="Heading4"/>
+        <w:keepNext w:val="0"/>
+        <w:keepLines w:val="0"/>
+        <w:spacing w:after="40" w:before="240" w:lineRule="auto"/>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+        </w:rPr>
+      </w:pPr>
+      <w:bookmarkStart w:colFirst="0" w:colLast="0" w:name="_suyo73qstf0g" w:id="3"/>
+      <w:bookmarkEnd w:id="3"/>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">3. Daily Progress Updates</w:t>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000018">
+      <w:pPr>
+        <w:spacing w:after="240" w:before="240" w:lineRule="auto"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">As you work through your self-created goal throughout the week, follow this format:</w:t>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000019">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="3"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="240" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Daily Comments</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">:</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000001A">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="3"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Add a comment to explain what you did, what is left to do, and any issues you faced or resolved.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000001B">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="3"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Where to add comments</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: You will add daily comments under the </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Week Goals</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve"> (self-created goal) that you created on Monday. For example:</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000001C">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="2"/>
+          <w:numId w:val="3"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="2160" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">&quot;Completed the deadline field functionality, still working on the validation to avoid past dates.&quot;</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000001D">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="2"/>
+          <w:numId w:val="3"/>
+        </w:numPr>
+        <w:spacing w:after="240" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="2160" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">&quot;Fixed the email notification issue; it's now sending 24 hours before the deadline.&quot;</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000001E">
+      <w:pPr>
+        <w:pStyle w:val="Heading4"/>
+        <w:keepNext w:val="0"/>
+        <w:keepLines w:val="0"/>
+        <w:spacing w:after="40" w:before="240" w:lineRule="auto"/>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+        </w:rPr>
+      </w:pPr>
+      <w:bookmarkStart w:colFirst="0" w:colLast="0" w:name="_dx3rf14gg2ct" w:id="4"/>
+      <w:bookmarkEnd w:id="4"/>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">4. Setting Goals For the Next Week (Suggestion for Lead Dev)</w:t>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000001F">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="5"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="240" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Submit on Monday</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: After creating your self-made goal on Monday, submit Setting Goals for the Next Week for validation. This goal ensures that the plan for this week is aligned and clear.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000020">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="5"/>
+        </w:numPr>
+        <w:spacing w:after="240" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Submit for validation on Friday</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: The goal submission and self-created goal (week goals) should be submitted for validation by Friday night.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000021">
+      <w:pPr>
+        <w:pStyle w:val="Heading4"/>
+        <w:keepNext w:val="0"/>
+        <w:keepLines w:val="0"/>
+        <w:spacing w:after="40" w:before="240" w:lineRule="auto"/>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+        </w:rPr>
+      </w:pPr>
+      <w:bookmarkStart w:colFirst="0" w:colLast="0" w:name="_1l1gnjp82dmo" w:id="5"/>
+      <w:bookmarkEnd w:id="5"/>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">5. Goal Submission and Validation</w:t>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000022">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="10"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="240" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Friday</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: Once you&#x2019;ve completed your Week Goal, submit it for validation to ensure everything aligns with the required settings. Make sure the goal is complete and mark the goal percentage.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000023">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="10"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Attach a Loom video</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: In the </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Goal Submission</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve"> goal (submitted on Friday), attach a Loom video or provide a detailed explanation of what you did and how you did it to offer clarity.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000024">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="10"/>
+        </w:numPr>
+        <w:spacing w:after="240" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Weekly PR</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: Also, add the </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Weekly Code Pull Request (PR)</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve"> in the </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Goal Submission</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve"> goal. Include the PR link for review.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000025">
+      <w:pPr>
+        <w:pStyle w:val="Heading4"/>
+        <w:keepNext w:val="0"/>
+        <w:keepLines w:val="0"/>
+        <w:spacing w:after="40" w:before="240" w:lineRule="auto"/>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+        </w:rPr>
+      </w:pPr>
+      <w:bookmarkStart w:colFirst="0" w:colLast="0" w:name="_3d82c3wlozv8" w:id="6"/>
+      <w:bookmarkEnd w:id="6"/>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">6. Regular Goal Reviews</w:t>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000026">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="8"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="240" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Goal Validation</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: Before submitting your (</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Setting Goals for the Next Week</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">) goal on Monday, ensure that it aligns with the required standards. If there are any issues or changes needed, review and fix them before submitting the goal for validation.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000027">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="8"/>
+        </w:numPr>
+        <w:spacing w:after="240" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">PR for Validation</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: As part of your goal submission, create a pull request (PR) for validation. Include the PR link in the goal submission.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000028">
+      <w:pPr>
+        <w:pStyle w:val="Heading4"/>
+        <w:keepNext w:val="0"/>
+        <w:keepLines w:val="0"/>
+        <w:spacing w:after="40" w:before="240" w:lineRule="auto"/>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+        </w:rPr>
+      </w:pPr>
+      <w:bookmarkStart w:colFirst="0" w:colLast="0" w:name="_cijkjsf68r10" w:id="7"/>
+      <w:bookmarkEnd w:id="7"/>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">7. Ensuring Accountability</w:t>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000029">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="7"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="240" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Daily Check-Ins</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: Every day, update your goal by marking off tasks in the checkbox section and adding comments on the work done.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000002A">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="7"/>
+        </w:numPr>
+        <w:spacing w:after="240" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Manager Tagging</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: When you add comments on your goal, tag your manager for updates and visibility. This helps keep track of progress and enables timely support if any blockers arise.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000002B">
+      <w:pPr>
+        <w:pStyle w:val="Heading4"/>
+        <w:keepNext w:val="0"/>
+        <w:keepLines w:val="0"/>
+        <w:spacing w:after="40" w:before="240" w:lineRule="auto"/>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+        </w:rPr>
+      </w:pPr>
+      <w:bookmarkStart w:colFirst="0" w:colLast="0" w:name="_ktvr5mb7kf8h" w:id="8"/>
+      <w:bookmarkEnd w:id="8"/>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">8. Example of Goal Creation</w:t>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000002C">
+      <w:pPr>
+        <w:spacing w:after="240" w:before="240" w:lineRule="auto"/>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Example 1: Week Goal</w:t>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000002D">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="240" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Title</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: Add &quot;Task Deadline&quot; feature to the Task Management section (Feb 25 - Mar 1)</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000002E">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Problem Statement</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">:</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000002F">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Currently, there is no functionality to set a deadline for tasks in the Task Management section. Users are unable to track the deadline for each task, which makes it harder for teams to meet project timelines. We need to implement this feature to allow users to set, edit, and view task deadlines.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000030">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Solution Approach</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">:</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000031">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Implement a new &quot;Deadline&quot; field for tasks, which will be a date picker that allows users to select a date and time for the task to be completed.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000032">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Ensure the deadline is visible on the task list page and in the individual task details page.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000033">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Implement validation to ensure the deadline cannot be set to a date in the past.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000034">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Add a feature to notify users via email 24 hours before the task deadline.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000035">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Write unit tests for the &quot;Task Deadline&quot; functionality.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000036">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Perform code review and deploy to staging environment for QA testing.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000037">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Acceptance Criteria</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">:</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000038">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Functional behavior</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: The &quot;Task Deadline&quot; feature allows the user to set, edit, and view the deadline for a task. It cannot be set to a past date.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000039">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Performance metrics</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: The feature should load the task deadlines within 1 second on the task list page.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000003A">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Tests written</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: Unit tests are written for the deadline setting, validation, and email notification functions.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000003B">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Reviewed &amp; deployed</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: Code review completed and feature deployed to the staging environment for QA testing.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000003C">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Checkboxes (after Acceptance Criteria)</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">:</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000003D">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Implement &quot;Deadline&quot; field for tasks</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000003E">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Add validation for future deadlines</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000003F">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="1"/>
+          <w:numId w:val="9"/>
+        </w:numPr>
+        <w:spacing w:after="240" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="1440" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Test email notification feature</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000040">
+      <w:pPr>
+        <w:spacing w:after="240" w:before="240" w:lineRule="auto"/>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Example 2: Daily Comment Updates</w:t>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000041">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="2"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="240" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Day 1 Comment</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: &quot;Completed adding the 'Deadline' field. Still working on validation to ensure the deadline isn't set in the past.&quot;</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000042">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="2"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Day 2 Comment</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: &quot;Validation for date picker functionality completed. Starting on email notification feature for task deadlines.&quot;</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000043">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="2"/>
+        </w:numPr>
+        <w:spacing w:after="240" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Day 3 Comment</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">: &quot;Email notification feature implemented and tested. Working on unit tests now.&quot;</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000044">
+      <w:pPr>
+        <w:pStyle w:val="Heading4"/>
+        <w:keepNext w:val="0"/>
+        <w:keepLines w:val="0"/>
+        <w:spacing w:after="40" w:before="240" w:lineRule="auto"/>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+        </w:rPr>
+      </w:pPr>
+      <w:bookmarkStart w:colFirst="0" w:colLast="0" w:name="_hbkusp3ru3v7" w:id="9"/>
+      <w:bookmarkEnd w:id="9"/>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">9. Summary of Key Points</w:t>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000045">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="4"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="240" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Create goals on Monday, submit for validation, and ensure alignment with required settings.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000046">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="4"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Submit the final goal and PR for review on Friday.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000047">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="4"/>
+        </w:numPr>
+        <w:spacing w:after="0" w:afterAutospacing="0" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Update daily by checking off completed tasks and leaving comments with details.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000048">
+      <w:pPr>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="4"/>
+        </w:numPr>
+        <w:spacing w:after="240" w:before="0" w:beforeAutospacing="0" w:lineRule="auto"/>
+        <w:ind w:left="720" w:hanging="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Review and confirm your goal is valid before submitting for validation.</w:t>
+        <w:br w:type="textWrapping"/>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000049">
+      <w:pPr>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:pict>
+          <v:rect style="width:0.0pt;height:1.5pt" o:hr="t" o:hrstd="t" o:hralign="center" fillcolor="#A0A0A0" stroked="f"/>
+        </w:pict>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000004A">
+      <w:pPr>
+        <w:pStyle w:val="Heading3"/>
+        <w:keepNext w:val="0"/>
+        <w:keepLines w:val="0"/>
+        <w:spacing w:before="280" w:lineRule="auto"/>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="26"/>
+          <w:szCs w:val="26"/>
+        </w:rPr>
+      </w:pPr>
+      <w:bookmarkStart w:colFirst="0" w:colLast="0" w:name="_ntaglqfr6vzd" w:id="10"/>
+      <w:bookmarkEnd w:id="10"/>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1"/>
+          <w:bCs w:val="1"/>
+          <w:color w:val="000000"/>
+          <w:sz w:val="26"/>
+          <w:szCs w:val="26"/>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Responsibilities Breakdown</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="Table1"/>
+        <w:tblW w:w="9360.0" w:type="dxa"/>
+        <w:jc w:val="left"/>
+        <w:tblBorders>
+          <w:top w:color="000000" w:space="0" w:sz="0" w:val="nil"/>
+          <w:left w:color="000000" w:space="0" w:sz="0" w:val="nil"/>
+          <w:bottom w:color="000000" w:space="0" w:sz="0" w:val="nil"/>
+          <w:right w:color="000000" w:space="0" w:sz="0" w:val="nil"/>
+          <w:insideH w:color="000000" w:space="0" w:sz="0" w:val="nil"/>
+          <w:insideV w:color="000000" w:space="0" w:sz="0" w:val="nil"/>
+        </w:tblBorders>
+        <w:tblLayout w:type="fixed"/>
+        <w:tblLook w:val="0600"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="2370.421216848674"/>
+        <w:gridCol w:w="3655.4134165366618"/>
+        <w:gridCol w:w="3334.165366614665"/>
+        <w:tblGridChange w:id="0">
+          <w:tblGrid>
+            <w:gridCol w:w="2370.421216848674"/>
+            <w:gridCol w:w="3655.4134165366618"/>
+            <w:gridCol w:w="3334.165366614665"/>
+          </w:tblGrid>
+        </w:tblGridChange>
+      </w:tblGrid>
+      <w:tr>
+        <w:trPr>
+          <w:cantSplit w:val="0"/>
+          <w:trHeight w:val="500" w:hRule="atLeast"/>
+          <w:tblHeader w:val="0"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000004B">
+            <w:pPr>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:b w:val="1"/>
+                <w:bCs w:val="1"/>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Task</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000004C">
+            <w:pPr>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:b w:val="1"/>
+                <w:bCs w:val="1"/>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Daily Responsibility</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000004D">
+            <w:pPr>
+              <w:jc w:val="center"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:b w:val="1"/>
+                <w:bCs w:val="1"/>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Weekly Responsibility</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:cantSplit w:val="0"/>
+          <w:trHeight w:val="770" w:hRule="atLeast"/>
+          <w:tblHeader w:val="0"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000004E">
+            <w:pPr>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:b w:val="1"/>
+                <w:bCs w:val="1"/>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Self-Created Goal</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000004F">
+            <w:pPr>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Daily comments on progress</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000050">
+            <w:pPr>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Submit goal for validation by Friday</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:cantSplit w:val="0"/>
+          <w:trHeight w:val="770" w:hRule="atLeast"/>
+          <w:tblHeader w:val="0"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000051">
+            <w:pPr>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:b w:val="1"/>
+                <w:bCs w:val="1"/>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Setting Goals for the Next Week</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000052">
+            <w:pPr>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">N/A</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000053">
+            <w:pPr>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Submit on Monday for review</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:cantSplit w:val="0"/>
+          <w:trHeight w:val="776.8505859375" w:hRule="atLeast"/>
+          <w:tblHeader w:val="0"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000054">
+            <w:pPr>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:b w:val="1"/>
+                <w:bCs w:val="1"/>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Goal Submission</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000055">
+            <w:pPr>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">N/A</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000056">
+            <w:pPr>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Submit final goal and Loom video, PR on Friday</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:cantSplit w:val="0"/>
+          <w:trHeight w:val="770" w:hRule="atLeast"/>
+          <w:tblHeader w:val="0"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000057">
+            <w:pPr>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:b w:val="1"/>
+                <w:bCs w:val="1"/>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Daily Check-ins &amp; Comments</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000058">
+            <w:pPr>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Add comments on daily tasks and mark off completed ones</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="00000059">
+            <w:pPr>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">N/A</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr>
+          <w:cantSplit w:val="0"/>
+          <w:trHeight w:val="770" w:hRule="atLeast"/>
+          <w:tblHeader w:val="0"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000005A">
+            <w:pPr>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:b w:val="1"/>
+                <w:bCs w:val="1"/>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Weekly PR &amp; Code Review</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000005B">
+            <w:pPr>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">N/A</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcBorders>
+              <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+              <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="100.0" w:type="dxa"/>
+              <w:left w:w="100.0" w:type="dxa"/>
+              <w:bottom w:w="100.0" w:type="dxa"/>
+              <w:right w:w="100.0" w:type="dxa"/>
+            </w:tcMar>
+            <w:vAlign w:val="top"/>
+          </w:tcPr>
+          <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000005C">
+            <w:pPr>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rtl w:val="0"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Add the PR link to your Goal Submission on Friday</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000005D">
+      <w:pPr>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+      </w:r>
+    </w:p>
+    <w:p w:rsidR="00000000" w:rsidDel="00000000" w:rsidP="00000000" w:rsidRDefault="00000000" w:rsidRPr="00000000" w14:paraId="0000005E">
+      <w:pPr>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rtl w:val="0"/>
+        </w:rPr>
+      </w:r>
+    </w:p>
+    <w:sectPr>
+      <w:pgSz w:h="15840" w:w="12240" w:orient="portrait"/>
+      <w:pgMar w:bottom="1440" w:top="1440" w:left="1440" w:right="1440" w:header="720" w:footer="720"/>
+      <w:pgNumType w:start="1"/>
+    </w:sectPr>
+  </w:body>
+</w:document>

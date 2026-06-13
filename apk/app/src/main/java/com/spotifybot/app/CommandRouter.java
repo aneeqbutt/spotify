@@ -18,14 +18,14 @@ import com.google.gson.JsonObject;
  * Each executor is a fresh instance per command — no shared mutable state.
  *
  * Supported action_type values:
- *   SEARCH_AND_PLAY    → SearchAndPlayExecutor    (params: query)
+ *   SEARCH_AND_PLAY    → SearchAndPlayExecutor    (params: query, playlist_name [optional])
  *   LIKE_CURRENT_TRACK → LikeTrackExecutor        (params: none)
  *   FOLLOW_ARTIST      → FollowArtistExecutor     (params: artist_name)
  *   SKIP_TRACK         → SkipTrackExecutor        (params: none)
  *   PLAY_FROM_ALBUM    → PlayFromAlbumExecutor    (params: query, daily_limit, hourly_limit)
  *   PLAY_FROM_PLAYLIST → PlayFromPlaylistExecutor (params: query, daily_limit, hourly_limit)
  *   FOLLOW_PLAYLIST    → FollowPlaylistExecutor   (params: query)
- *   ADD_TO_PLAYLIST    → AddToPlaylistExecutor    (params: playlist_name)
+ *   ADD_TO_PLAYLIST    → AddToPlaylistExecutor    (params: playlist_name) [legacy — use SEARCH_AND_PLAY + playlist_name]
  *   CREATE_PLAYLIST    → CreatePlaylistExecutor   (params: playlist_name)
  */
 public class CommandRouter {
@@ -54,9 +54,6 @@ public class CommandRouter {
         long   ttlMs      = command.has("ttl_ms")
                 ? command.get("ttl_ms").getAsLong() : 180_000;
 
-        Log.i(TAG, "[CMD] Received: action=" + actionType
-                + " run=" + runId + " cmd=" + commandId);
-
         // ── TTL check ─────────────────────────────────────────────────────────
         // Commands older than ttl_ms are silently dropped — the dashboard will
         // already show them as timed-out; re-executing would corrupt the run log.
@@ -80,6 +77,10 @@ public class CommandRouter {
         JsonObject params = command.has("params")
                 ? command.get("params").getAsJsonObject()
                 : new JsonObject();
+
+        String queryHint = params.has("query") ? params.get("query").getAsString() : "";
+        Log.i(TAG, "[CMD] Received: action=" + actionType
+                + " query=" + queryHint + " run=" + runId + " cmd=" + commandId);
 
         // ── Route to executor ─────────────────────────────────────────────────
         SpotifyExecutor executor = null;
@@ -115,7 +116,7 @@ public class CommandRouter {
                 executor = new PlayFromPlaylistExecutor();
                 break;
 
-case "FOLLOW_PLAYLIST":
+            case "FOLLOW_PLAYLIST":
                 Log.i(TAG, "[CMD] → FollowPlaylistExecutor");
                 executor = new FollowPlaylistExecutor();
                 break;

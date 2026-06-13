@@ -32,6 +32,13 @@ apk/local.properties
 *.keystore
 *.jks
 
+# Android SDK (local tooling — multi-GB, never commit)
+Sdk/
+
+# IDE project files
+apk/.idea/
+apk/.run/
+
 # Agents / skills (local tooling, not project code)
 .agents/
 

@@ -25,7 +25,7 @@ Usage (called from main.py lifespan):
 
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -34,6 +34,12 @@ logger = logging.getLogger("spotifybot")
 
 EXPIRY_CHECK_INTERVAL_S = 30    # how often we scan (seconds)
 DEFAULT_TTL_S           = 300   # 5 minutes — gives time for WS reconnect + COMMAND_DONE retry
+
+# SQLite stores datetimes as "YYYY-MM-DD HH:MM:SS.ffffff" (space separator, no timezone).
+# Any timezone-aware isoformat string ("...T...+00:00") compares as ALWAYS LESS THAN a
+# naive string because space (0x20) < 'T' (0x54) in ASCII. Use this format for all
+# raw SQL comparisons to avoid silently expiring every run immediately.
+_SQLITE_FMT = "%Y-%m-%d %H:%M:%S.%f"
 
 
 async def run_expiry_loop(engine: AsyncEngine) -> None:
@@ -57,8 +63,8 @@ async def _expire_stale_runs(engine: AsyncEngine) -> None:
     """
     Find runs stuck in RUNNING longer than DEFAULT_TTL_S and mark them TIMED_OUT.
     """
-    cutoff = datetime.now(timezone.utc) - timedelta(seconds=DEFAULT_TTL_S)
-    now    = datetime.now(timezone.utc)
+    now    = datetime.utcnow()
+    cutoff = now - timedelta(seconds=DEFAULT_TTL_S)
 
     async with engine.begin() as conn:
         # Fetch candidates so we can log them individually
@@ -69,7 +75,7 @@ async def _expire_stale_runs(engine: AsyncEngine) -> None:
                 WHERE status = 'RUNNING'
                   AND start_time < :cutoff
             """),
-            {"cutoff": cutoff.isoformat()},
+            {"cutoff": cutoff.strftime(_SQLITE_FMT)},
         )
         stale_rows = result.fetchall()
 
@@ -84,7 +90,7 @@ async def _expire_stale_runs(engine: AsyncEngine) -> None:
             age_s = (now - datetime.fromisoformat(
                 start_time if isinstance(start_time, str)
                 else start_time.isoformat()
-            ).replace(tzinfo=timezone.utc)).total_seconds()
+            )).total_seconds()
 
             await conn.execute(
                 text("""
@@ -93,7 +99,7 @@ async def _expire_stale_runs(engine: AsyncEngine) -> None:
                         end_time = :now
                     WHERE run_id = :run_id
                 """),
-                {"now": now.isoformat(), "run_id": run_id_val},
+                {"now": now.strftime(_SQLITE_FMT), "run_id": run_id_val},
             )
             logger.warning(
                 "[EXPIRY] Run %s marked TIMED_OUT (ran for %.1fs, limit=%ds)",

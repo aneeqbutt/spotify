@@ -20,6 +20,7 @@ import com.google.gson.JsonObject;
  */
 public class SkipTrackExecutor extends SpotifyExecutor {
 
+    // Entry point — launches Spotify and starts the skip step chain
     @Override
     protected void doExecute(JsonObject params) {
         Log.i(TAG, "[EXEC] SkipTrack START");
@@ -28,6 +29,7 @@ public class SkipTrackExecutor extends SpotifyExecutor {
 
     // ── Step 1 ────────────────────────────────────────────────────────────────
 
+    // Taps the mini-player bar to open the full Now Playing screen
     private void stepOpenPlayer() {
         if (timeoutFired) return;
         stepStarted("step_open_player", "Open Full Player");
@@ -45,7 +47,7 @@ public class SkipTrackExecutor extends SpotifyExecutor {
             bar.performAction(AccessibilityNodeInfo.ACTION_CLICK);
             bar.recycle();
             stepOk("step_open_player", "Open Full Player");
-            handler.postDelayed(this::stepTapSkip, 1_500);
+            scheduleStep(this::stepTapSkip, GAP_SHORT);
         } else {
             // Already on full player or no track playing — try skip directly
             Log.w(TAG, "[EXEC] Now Playing bar not found — trying skip in current view");
@@ -56,6 +58,7 @@ public class SkipTrackExecutor extends SpotifyExecutor {
 
     // ── Step 2 ────────────────────────────────────────────────────────────────
 
+    // Finds the "Next" button by content-desc and taps it to skip the track
     private void stepTapSkip() {
         if (timeoutFired) return;
         stepStarted("step_tap_skip", "Tap Skip Button");
@@ -88,11 +91,12 @@ public class SkipTrackExecutor extends SpotifyExecutor {
 
         if (!clicked) { stepFailed("step_tap_skip", "CLICK_ACTION_REJECTED"); commandDone(false); return; }
         stepOk("step_tap_skip", "Tap Skip Button");
-        handler.postDelayed(this::stepVerifySkip, 1_500);
+        scheduleStep(this::stepVerifySkip, GAP_SHORT);
     }
 
     // ── Step 3 ────────────────────────────────────────────────────────────────
 
+    // Soft-verifies the skip by checking that the Now Playing bar is still visible
     private void stepVerifySkip() {
         if (timeoutFired) return;
         stepStarted("step_verify_skip", "Verify Skip");

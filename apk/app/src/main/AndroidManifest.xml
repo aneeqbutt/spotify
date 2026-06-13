@@ -8,6 +8,7 @@
 
     <!-- Foreground service — keeps APK alive during automation -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <!-- Post notifications — required for Foreground Service on Android 13+ -->
@@ -21,6 +22,10 @@
 
     <!-- Auto-start after boot -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Granted via adb on installDebug — enables programmatic accessibility toggle -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
 
     <!-- Android 11+ package visibility — required to query/launch Spotify -->
     <queries>
@@ -57,16 +62,18 @@
             android:name=".BotForegroundService"
             android:exported="false"
             android:stopWithTask="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Maintains WebSocket connection for Spotify automation on this device" />
+        </service>
 
-        <!-- Boot + screen-on receiver — restarts BotForegroundService after reboot or unlock -->
+        <!-- Boot receiver — reboot only (no SCREEN_ON — that broke Samsung binding) -->
         <receiver
             android:name=".BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.SCREEN_ON" />
-                <action android:name="android.intent.action.USER_PRESENT" />
             </intent-filter>
         </receiver>
 

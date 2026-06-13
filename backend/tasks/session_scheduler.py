@@ -55,9 +55,12 @@ COMMAND_TTL_MS           = 180_000
 PLAYBACK_ACTIONS     = {'SEARCH_AND_PLAY', 'PLAY_FROM_ALBUM', 'PLAY_FROM_PLAYLIST'}
 DEFAULT_PLAY_DURATION_S = 86400  # play until session ends (overridable per task via action_params)
 
-# Tasks that wait for the APK to report track-end (position_text == duration_text).
-# All others in PLAYBACK_ACTIONS fall back to the timer-based wait.
-TRACK_FINISH_ACTIONS = {'SEARCH_AND_PLAY', 'PLAY_FROM_PLAYLIST'}
+# Tasks that wait for the APK to report track-end via PLAYBACK_FINISHED event.
+# All three executors call startPlaybackMonitor() — the event-driven path fires when
+# the track title changes (next song started = previous song done).
+# PLAY_FROM_ALBUM was previously excluded, causing the scheduler to fall back to
+# _interruptible_sleep(86400) — a 24-hour freeze until session end_time.
+TRACK_FINISH_ACTIONS = {'SEARCH_AND_PLAY', 'PLAY_FROM_PLAYLIST', 'PLAY_FROM_ALBUM'}
 
 # Instant tasks: action finishes in seconds; only a short gap is needed.
 INSTANT_TASK_GAP_MIN_S = 5    # was 2 — give 5-10s so LIKE/SKIP fire clearly mid-playback
@@ -67,6 +70,26 @@ INSTANT_TASK_GAP_MAX_S = 10   # was 5
 # Maps run_id → asyncio.Event.  Set by ws.py when APK sends PLAYBACK_FINISHED.
 
 _playback_events: dict[str, asyncio.Event] = {}
+
+# ── Run → Session mapping ─────────────────────────────────────────────────────
+# Maps run_id → session_id for every run dispatched by the scheduler.
+# ws.py reads this when broadcasting run_event so the frontend can include
+# session_id in each event — letting the dashboard re-associate if it missed
+# the session_run SSE event (e.g. due to a brief SSE reconnect).
+
+_run_to_session: dict[str, int] = {}
+
+
+def get_session_id_for_run(run_id: str) -> int | None:
+    """Return the session_id that dispatched this run, or None for manual runs."""
+    return _run_to_session.get(run_id)
+
+
+def _cleanup_run_to_session(session_id: int) -> None:
+    """Remove all run_id → session_id entries for a finished session."""
+    stale = [rid for rid, sid in _run_to_session.items() if sid == session_id]
+    for rid in stale:
+        _run_to_session.pop(rid, None)
 
 
 def register_playback_wait(run_id: str) -> asyncio.Event:
@@ -146,7 +169,7 @@ async def _check_and_start_sessions(engine: AsyncEngine) -> None:
     async with DbSession() as db:
         result = await db.execute(
             select(SessionModel).where(
-                SessionModel.status == "scheduled",
+                SessionModel.status.in_(["scheduled", "running"]),
                 SessionModel.start_time <= now,
             )
         )
@@ -173,6 +196,7 @@ async def _run_session_task(session_id: int, engine: AsyncEngine) -> None:
         # Wait until start_time if the session was spawned ahead of schedule.
         # This gives exact start-time accuracy regardless of when schedule() was called.
         sess = await _load_session(session_id, engine)
+        device_id: str | None = sess.device_id if sess else None
         if sess:
             now = datetime.utcnow()
             start_naive = _to_naive_utc(sess.start_time)
@@ -414,17 +438,30 @@ async def _run_session_task(session_id: int, engine: AsyncEngine) -> None:
             )
             await asyncio.sleep(cooldown)
 
-        # Normal exit
+        # Normal exit — end_time reached or session stopped externally.
+        # Tell the APK to pause Spotify so music stops when the session window closes.
+        if device_id and manager.is_connected(device_id):
+            try:
+                await manager.send_command(device_id, {
+                    "type":       "CANCEL_COMMAND",
+                    "session_id": session_id,
+                })
+                logger.info("[SCHED] Session %d: CANCEL_COMMAND sent to device %s", session_id, device_id)
+            except Exception as exc:
+                logger.warning("[SCHED] Session %d: CANCEL_COMMAND send failed: %s", session_id, exc)
+
         await _set_session_status(session_id, "done", engine)
         await broadcaster.publish({
             "type": "session_status", "session_id": session_id, "status": "done",
         })
+        _cleanup_run_to_session(session_id)
 
     except asyncio.CancelledError:
-        await _set_session_status(session_id, "done", engine)
+        await _set_session_status(session_id, "cancelled", engine)
         await broadcaster.publish({
-            "type": "session_status", "session_id": session_id, "status": "done",
+            "type": "session_status", "session_id": session_id, "status": "cancelled",
         })
+        _cleanup_run_to_session(session_id)
 
     except Exception as exc:
         logger.exception("[SCHED] Session %d crashed: %s", session_id, exc)
@@ -432,6 +469,7 @@ async def _run_session_task(session_id: int, engine: AsyncEngine) -> None:
         await broadcaster.publish({
             "type": "session_status", "session_id": session_id, "status": "failed",
         })
+        _cleanup_run_to_session(session_id)
 
 
 # ── Task dispatch ─────────────────────────────────────────────────────────────
@@ -461,6 +499,7 @@ async def _dispatch_task(
             return None, None, None
 
         run_id = str(uuid.uuid4())
+        _run_to_session[run_id] = session_id   # track so ws.py can include session_id in run_event
         run = Run(
             run_id=run_id,
             task_id=task.id,

@@ -50,17 +50,24 @@ public class SpotifyAccessibilityService extends AccessibilityService {
 
     // Tracks whether we have already performed the M1-C first click demo
     private boolean firstClickDone = false;
+    /** Pending M1-C demo runnable — cancelled when a real command starts. */
+    private Runnable pendingFirstClickRunnable = null;
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     @Override
     public void onServiceConnected() {
         super.onServiceConnected();
+
+        // CRITICAL: set the binding marker FIRST and do nothing heavy synchronously.
+        // SpotifyAccessibilityService and BotForegroundService share one process, so any
+        // exception thrown synchronously here (especially the FGS-start chain on
+        // targetSdk 36) crashes the process and tears the binding back down — Samsung
+        // then refuses to rebind and the toggle becomes a permanent zombie. Setting
+        // `instance` here means isAccessibilityBound() is already true the instant we
+        // bind, and all real work is deferred + wrapped so it can never kill the bind.
         instance = this;
         Log.i(TAG, "[SERVICE] SpotifyAccessibilityService connected and running");
-
-        // Cancel any stale "needs reactivation" notification — service is live again.
-        cancelRebindNotification();
 
         // NOTE: do NOT call setServiceInfo() here.
         // The XML config (accessibility_service_config.xml) is complete and correct.
@@ -69,20 +76,49 @@ public class SpotifyAccessibilityService extends AccessibilityService {
         // Android 14 to reject the service and flip the toggle back to OFF.
         Log.i(TAG, "[SERVICE] Using XML service config — ready to receive events");
 
-        // Auto-start BotForegroundService so the WebSocket connects immediately.
-        // The user may have enabled the accessibility service directly from Android Settings
-        // without ever opening the SpotifyBot app — this bridges the gap so the device
-        // shows as online in the dashboard without needing to open the app manually.
+        // Defer everything else off the bind callback. Posting lets onServiceConnected
+        // return immediately so the framework finishes registering the binding before we
+        // touch notifications or start the foreground service. Any failure is contained.
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            try {
+                cancelRebindNotification();
+            } catch (Throwable t) {
+                Log.w(TAG, "[SERVICE] cancelRebindNotification failed: " + t.getMessage());
+            }
+            try {
+                BotForegroundService.onAccessibilityBound();
+            } catch (Throwable t) {
+                Log.w(TAG, "[SERVICE] onAccessibilityBound failed: " + t.getMessage());
+            }
+            startForegroundServiceSafely();
+        });
+    }
+
+    /**
+     * Start BotForegroundService without ever letting an exception escape to the
+     * bind callback's process. On targetSdk 36 a background FGS start can throw
+     * ForegroundServiceStartNotAllowedException synchronously (caught here) — and
+     * if it ever escaped it would kill the shared process and unbind accessibility.
+     *
+     * The user may enable the accessibility service directly from Android Settings
+     * without opening the app, so this bridges the gap to bring the device online.
+     */
+    private void startForegroundServiceSafely() {
         try {
             Intent fgIntent = new Intent(this, BotForegroundService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(fgIntent);
+                try {
+                    startForegroundService(fgIntent);
+                } catch (Throwable e) {
+                    Log.w(TAG, "[SERVICE] FGS start blocked — activity trampoline: " + e.getMessage());
+                    ProcessRecovery.launchServiceViaActivity(this);
+                }
             } else {
                 startService(fgIntent);
             }
-            Log.i(TAG, "[SERVICE] BotForegroundService auto-started → WebSocket will connect");
-        } catch (Exception e) {
-            Log.e(TAG, "[SERVICE] Failed to auto-start BotForegroundService: " + e.getMessage());
+            Log.i(TAG, "[SERVICE] BotForegroundService start requested → WebSocket when bound");
+        } catch (Throwable e) {
+            Log.e(TAG, "[SERVICE] Failed to start BotForegroundService: " + e.getMessage());
         }
     }
 
@@ -98,8 +134,11 @@ public class SpotifyAccessibilityService extends AccessibilityService {
         // Only alert if service was previously connected (instance was set).
         // Avoids spurious notifications during APK install / uninstall.
         if (instance != null) {
-            Log.w(TAG, "[SERVICE] Accessibility service destroyed — Samsung killed binding. Showing alert.");
-            showRebindNotification();
+            Log.w(TAG, "[SERVICE] Accessibility service destroyed");
+            if (SetupHelper.isSetupComplete(this)) {
+                showRebindNotification();
+            }
+            BotForegroundService.onAccessibilityLost();
         }
 
         instance = null;
@@ -125,11 +164,27 @@ public class SpotifyAccessibilityService extends AccessibilityService {
             OverlayGuard.check(this);
         }
 
+        // Also check on Spotify CONTENT_CHANGED events.
+        // Premium upsells and promo cards are in-activity Compose composables —
+        // they appear/disappear within the same Activity without firing a
+        // TYPE_WINDOW_STATE_CHANGED, so the guard above never sees them.
+        // The only signal they produce is TYPE_WINDOW_CONTENT_CHANGED.
+        // OverlayGuard.check() is throttled to 800ms so this doesn't spam
+        // during normal seekbar / lyrics content updates.
+        if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+                && packageName.equals(SPOTIFY_PACKAGE)) {
+            OverlayGuard.check(this);
+        }
+
         // Only continue with Spotify-specific logic when Spotify is in the foreground
         if (!packageName.equals(SPOTIFY_PACKAGE)) return;
 
-        Log.d(TAG, "[EVENT] Spotify event: type=" + event.getEventType()
-                + " package=" + packageName);
+        // CONTENT_CHANGED fires hundreds/sec during playback — logging each one
+        // blocks the main looper and delays WebSocket heartbeats on the same thread.
+        int eventType = event.getEventType();
+        if (eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            Log.d(TAG, "[EVENT] Spotify event: type=" + eventType + " package=" + packageName);
+        }
 
         // ── Event-driven track-change detection ───────────────────────────────
         // TYPE_WINDOW_CONTENT_CHANGED fires continuously during Spotify playback
@@ -144,13 +199,29 @@ public class SpotifyAccessibilityService extends AccessibilityService {
             checkPlaybackTrackChange();
         }
 
-        // ── M1-C: First click demo ────────────────────────────────────────────
+        // ── M1-C: First click demo (dev milestone only — never during automation) ─
         if (!firstClickDone
+                && !SpotifyExecutor.isCommandInProgress()
                 && event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            Log.i(TAG, "[M1-C] Spotify window detected — waiting 1500ms for UI to settle");
+            Log.i(TAG, "[M1-C] Spotify window detected — waiting 700ms for UI to settle");
             firstClickDone = true;
+            pendingFirstClickRunnable = this::performFirstClick;
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
-                    this::performFirstClick, 1500);
+                    pendingFirstClickRunnable, 700);
+        }
+    }
+
+    /**
+     * Cancel the M1-C first-click demo. Called when a real automation command starts
+     * so the demo never clicks the Search tab mid-run and breaks the search flow.
+     */
+    public static void disableFirstClickDemo() {
+        if (instance == null) return;
+        instance.firstClickDone = true;
+        if (instance.pendingFirstClickRunnable != null) {
+            new android.os.Handler(android.os.Looper.getMainLooper())
+                    .removeCallbacks(instance.pendingFirstClickRunnable);
+            instance.pendingFirstClickRunnable = null;
         }
     }
 
@@ -184,6 +255,10 @@ public class SpotifyAccessibilityService extends AccessibilityService {
         if (now - lastTrackCheckMs < TRACK_CHECK_THROTTLE_MS) return;
         lastTrackCheckMs = now;
 
+        if (SpotifyExecutor.isCommandInProgress()) {
+            return;
+        }
+
         // Stabilization window: ignore changes in the first 10s after monitor start.
         // Prevents false PLAYBACK_FINISHED when Spotify's UI updates its title
         // from the previous song to the new one during the startup transition.
@@ -201,7 +276,23 @@ public class SpotifyAccessibilityService extends AccessibilityService {
         String currentTitle = readNowPlayingTitle();
         if (currentTitle == null || currentTitle.isEmpty()) return;
         if (currentTitle.equals(expectedTitle)) return;  // same track, still playing
-        if ("Advertisement".equals(currentTitle))        return;  // ignore ad transitions
+
+        // Suppress PLAYBACK_FINISHED during any audio ad, not just when the title is
+        // the literal string "Advertisement".  Branded audio ads show the advertiser
+        // name ("Nike", "Spotify Premium", etc.) which would otherwise be treated as a
+        // track change and fire PLAYBACK_FINISHED prematurely — waking the scheduler
+        // while the ad is still playing and sending it to dispatch the next task at
+        // the wrong time.
+        //
+        // OverlayGuard.isAudioAdPlaying() checks structural UI cues (id/ad_label,
+        // id/ad_indicator nodes) that are present regardless of the ad's text content,
+        // so it catches every audio ad format.  The "Advertisement" text guard is kept
+        // as a fast path to avoid the tree walk when it isn't needed.
+        if ("Advertisement".equals(currentTitle) || OverlayGuard.isAudioAdPlaying(this)) {
+            Log.d(TAG, "[MONITOR] Audio ad active (title='" + currentTitle
+                    + "') — suppressing premature PLAYBACK_FINISHED");
+            return;
+        }
 
         // Title changed — previous track finished, new one started
         Log.i(TAG, "[MONITOR] Track change detected: '" + expectedTitle
@@ -299,6 +390,10 @@ public class SpotifyAccessibilityService extends AccessibilityService {
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null) nm.cancel(ALERT_NOTIF_ID);
         } catch (Exception ignored) {}
+        // Also cancel the BotForegroundService dead-alert (ID 2002) — it fires from the
+        // health check when the health check detects instance==null during the toggle-off
+        // window and never auto-cancels when we reconnect.
+        BotForegroundService.cancelAccessibilityAlerts(this);
     }
 
     // ── M1-C: First Click ─────────────────────────────────────────────────────
@@ -309,6 +404,11 @@ public class SpotifyAccessibilityService extends AccessibilityService {
      * Uses node selectors only — no coordinate-based clicking.
      */
     private void performFirstClick() {
+        pendingFirstClickRunnable = null;
+        if (SpotifyExecutor.isCommandInProgress()) {
+            Log.i(TAG, "[M1-C] Skipped — automation command in progress");
+            return;
+        }
         Log.i(TAG, "[STEP] element_search | initiated | target=search_tab");
 
         // Search all windows — on Android 11+ the nav bar may be in a separate window

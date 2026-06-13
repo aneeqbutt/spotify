@@ -31,6 +31,7 @@ public class AddToPlaylistExecutor extends SpotifyExecutor {
 
     private String playlistName;
 
+    // Entry point — validates playlist_name param, then opens Now Playing screen
     @Override
     protected void doExecute(JsonObject params) {
         playlistName = params.has("playlist_name") ? params.get("playlist_name").getAsString() : "";
@@ -48,6 +49,7 @@ public class AddToPlaylistExecutor extends SpotifyExecutor {
 
     // ── Step 1 ────────────────────────────────────────────────────────────────
 
+    // Taps the mini-player bar to open the full Now Playing screen
     private void stepOpenPlayer() {
         if (timeoutFired) return;
         stepStarted("step_open_player", "Open Now Playing");
@@ -64,7 +66,7 @@ public class AddToPlaylistExecutor extends SpotifyExecutor {
             bar.performAction(AccessibilityNodeInfo.ACTION_CLICK);
             bar.recycle();
             stepOk("step_open_player", "Open Now Playing");
-            handler.postDelayed(this::stepTapOptions, 1_500);
+            scheduleStep(this::stepTapOptions, GAP_SHORT);
         } else {
             Log.w(TAG, "[EXEC] Now Playing bar not found — trying options directly");
             stepOk("step_open_player", "Open Now Playing");
@@ -74,6 +76,7 @@ public class AddToPlaylistExecutor extends SpotifyExecutor {
 
     // ── Step 2 ────────────────────────────────────────────────────────────────
 
+    // Taps the three-dot "More options" button on the full player screen
     private void stepTapOptions() {
         if (timeoutFired) return;
         stepStarted("step_tap_options", "Tap More Options");
@@ -111,11 +114,12 @@ public class AddToPlaylistExecutor extends SpotifyExecutor {
         if (!clicked) { stepFailed("step_tap_options", "CLICK_ACTION_REJECTED"); commandDone(false); return; }
 
         stepOk("step_tap_options", "Tap More Options");
-        humanDelay(1_000, 2_000, this::stepTapAddToPlaylist);
+        humanDelay(GAP_TINY, GAP_MEDIUM, this::stepTapAddToPlaylist);
     }
 
     // ── Step 3 ────────────────────────────────────────────────────────────────
 
+    // Taps "Add to playlist" in the options bottom sheet
     private void stepTapAddToPlaylist() {
         if (timeoutFired) return;
         stepStarted("step_tap_add_to_pl", "Tap Add to Playlist");
@@ -154,11 +158,12 @@ public class AddToPlaylistExecutor extends SpotifyExecutor {
         }
 
         stepOk("step_tap_add_to_pl", "Tap Add to Playlist");
-        humanDelay(1_500, 2_500, this::stepSelectPlaylist);
+        humanDelay(GAP_SHORT, GAP_LONG, this::stepSelectPlaylist);
     }
 
     // ── Step 4 ────────────────────────────────────────────────────────────────
 
+    // Locates the target playlist by name in the "Save in" sheet and taps its add button
     private void stepSelectPlaylist() {
         if (timeoutFired) return;
         stepStarted("step_select_playlist", "Select Target Playlist");
@@ -207,7 +212,7 @@ public class AddToPlaylistExecutor extends SpotifyExecutor {
         }
 
         stepOk("step_select_playlist", "Select Target Playlist");
-        handler.postDelayed(this::stepVerify, 1_000);
+        scheduleStep(this::stepVerify, GAP_TINY);
     }
 
     /**
@@ -265,6 +270,7 @@ public class AddToPlaylistExecutor extends SpotifyExecutor {
 
     // ── Step 5 ────────────────────────────────────────────────────────────────
 
+    // Confirms success by checking that the "Save in" bottom sheet has dismissed
     private void stepVerify() {
         if (timeoutFired) return;
         stepStarted("step_verify", "Verify Added to Playlist");
@@ -287,6 +293,7 @@ public class AddToPlaylistExecutor extends SpotifyExecutor {
 
     // ── Helper ────────────────────────────────────────────────────────────────
 
+    // Fires GLOBAL_ACTION_BACK to dismiss the options or picker sheet
     @Override
     protected void pressBack() {
         SpotifyAccessibilityService svc = SpotifyAccessibilityService.instance;

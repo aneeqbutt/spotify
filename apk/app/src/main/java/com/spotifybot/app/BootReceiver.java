@@ -3,61 +3,29 @@ package com.spotifybot.app;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Build;
 import android.util.Log;
 
 /**
- * BootReceiver — Keeps BotForegroundService alive across reboots and screen unlocks.
+ * BootReceiver — restart after reboot only.
  *
- * Handles three intents:
- *   BOOT_COMPLETED   — phone just booted; start the service automatically
- *   SCREEN_ON        — screen turned on (may be lock screen); trigger a restart attempt
- *   USER_PRESENT     — user dismissed the lock screen; definitive "device is usable" signal
+ * SCREEN_ON / USER_PRESENT were removed: they started BotForegroundService from the
+ * background on every unlock, exhausting the dataSync FGS quota on Android 14+ and
+ * destabilising the accessibility binding on Samsung.
  *
- * Why SCREEN_ON + USER_PRESENT?
- *   If the WakeLock kept everything alive the service is already running and the
- *   startForegroundService call is a harmless no-op (onStartCommand fires again and
- *   the wsClient != null guard handles the duplicate gracefully).
- *   If Samsung killed the service despite the WakeLock, this receiver brings it back
- *   the moment the screen turns on — no manual intervention needed.
+ * When accessibility is enabled, SpotifyAccessibilityService.onServiceConnected()
+ * already starts BotForegroundService — that is the primary path.
  */
 public class BootReceiver extends BroadcastReceiver {
 
     private static final String TAG = "SpotifyBot";
 
+    // Handles BOOT_COMPLETED broadcast and starts the bot service via activity trampoline
     @Override
     public void onReceive(Context context, Intent intent) {
-        String action = intent.getAction();
-        if (action == null) return;
-
-        switch (action) {
-            case Intent.ACTION_BOOT_COMPLETED:
-                Log.i(TAG, "[BOOT] Device booted — starting BotForegroundService");
-                startService(context);
-                break;
-
-            case Intent.ACTION_SCREEN_ON:
-                Log.i(TAG, "[BOOT] Screen on — ensuring BotForegroundService is running");
-                startService(context);
-                break;
-
-            case Intent.ACTION_USER_PRESENT:
-                Log.i(TAG, "[BOOT] User unlocked — ensuring BotForegroundService is running");
-                startService(context);
-                break;
+        if (intent == null || !Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
+            return;
         }
-    }
-
-    private void startService(Context context) {
-        try {
-            Intent serviceIntent = new Intent(context, BotForegroundService.class);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent);
-            } else {
-                context.startService(serviceIntent);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "[BOOT] Failed to start BotForegroundService: " + e.getMessage());
-        }
+        Log.i(TAG, "[BOOT] Device booted — starting via activity trampoline");
+        ProcessRecovery.launchServiceViaActivity(context);
     }
 }

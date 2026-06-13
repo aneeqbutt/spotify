@@ -22,6 +22,7 @@ import com.google.gson.JsonObject;
  */
 public class LikeTrackExecutor extends SpotifyExecutor {
 
+    // Entry point — launches Spotify and kicks off the like step chain
     @Override
     protected void doExecute(JsonObject params) {
         Log.i(TAG, "[EXEC] LikeTrack START");
@@ -30,6 +31,7 @@ public class LikeTrackExecutor extends SpotifyExecutor {
 
     // ── Step 1 ────────────────────────────────────────────────────────────────
 
+    // Taps the mini-player bar to open the full Now Playing screen
     private void stepOpenPlayer() {
         if (timeoutFired) return;
         stepStarted("step_open_player", "Open Full Player");
@@ -48,7 +50,7 @@ public class LikeTrackExecutor extends SpotifyExecutor {
             bar.performAction(AccessibilityNodeInfo.ACTION_CLICK);
             bar.recycle();
             stepOk("step_open_player", "Open Full Player");
-            handler.postDelayed(this::stepTapLike, 1_500);
+            scheduleStep(this::stepTapLike, GAP_SHORT);
         } else {
             // Already on full player, or no track playing — try like button directly
             Log.w(TAG, "[EXEC] Now Playing bar not found — attempting like button directly");
@@ -59,6 +61,7 @@ public class LikeTrackExecutor extends SpotifyExecutor {
 
     // ── Step 2 ────────────────────────────────────────────────────────────────
 
+    // Finds the "Add item" heart button and taps it to like the current track
     private void stepTapLike() {
         if (timeoutFired) return;
         stepStarted("step_tap_like", "Tap Like Button");
@@ -113,7 +116,7 @@ public class LikeTrackExecutor extends SpotifyExecutor {
 
         stepOk("step_tap_like", "Tap Like Button");
         // Wait for "Save to Library" bottom sheet (appears on some Spotify versions)
-        handler.postDelayed(this::stepTapLikedSongs, 1_500);
+        scheduleStep(this::stepTapLikedSongs, GAP_SHORT);
     }
 
     // ── Step 3 ────────────────────────────────────────────────────────────────
@@ -121,6 +124,7 @@ public class LikeTrackExecutor extends SpotifyExecutor {
     // "Liked Songs" and "New playlist". Tap "Liked Songs" to save.
     // On others it saves directly — soft success if sheet doesn't appear.
 
+    // Taps "Liked Songs" in the save-to-library bottom sheet if it appears, soft-succeeds if not
     private void stepTapLikedSongs() {
         if (timeoutFired) return;
         stepStarted("step_tap_liked_songs", "Tap Liked Songs");
@@ -135,7 +139,7 @@ public class LikeTrackExecutor extends SpotifyExecutor {
             // No bottom sheet — direct save occurred (newer Spotify builds)
             Log.i(TAG, "[EXEC] No 'Liked Songs' sheet — assuming direct save succeeded");
             stepOk("step_tap_liked_songs", "Tap Liked Songs");
-            handler.postDelayed(this::stepVerifyLiked, 500);
+            scheduleStep(this::stepVerifyLiked, GAP_TINY);
             return;
         }
 
@@ -154,11 +158,12 @@ public class LikeTrackExecutor extends SpotifyExecutor {
         }
 
         stepOk("step_tap_liked_songs", "Tap Liked Songs");
-        handler.postDelayed(this::stepVerifyLiked, 1_000);
+        scheduleStep(this::stepVerifyLiked, GAP_TINY);
     }
 
     // ── Step 4 ────────────────────────────────────────────────────────────────
 
+    // Confirms the like by checking that the button changed to "Remove item"
     private void stepVerifyLiked() {
         if (timeoutFired) return;
         stepStarted("step_verify_liked", "Verify Liked State");

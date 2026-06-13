@@ -46,7 +46,10 @@ public class OverlayGuard {
      */
     public static boolean check(AccessibilityService svc) {
         long now = System.currentTimeMillis();
-        if (now - lastCheckMs < THROTTLE_MS) return false;
+        // During automation the playlist/album page fires hundreds of CONTENT_CHANGED
+        // events — heavy overlay scans on the main looper stall executor step timers.
+        long throttleMs = SpotifyExecutor.isCommandInProgress() ? 3_000 : THROTTLE_MS;
+        if (now - lastCheckMs < throttleMs) return false;
         lastCheckMs = now;
         return dismiss(svc);
     }
@@ -79,7 +82,8 @@ public class OverlayGuard {
         // ── 2. text patterns ──────────────────────────────────────────────────
         String[] textPatterns = {
             "Not now", "No thanks", "Skip", "SKIP",
-            "Maybe later", "Close", "Got it", "Dismiss",
+            "Maybe later", "Close", "Got it",
+            "Dismiss", "dismiss", "DISMISS",   // all case variants — Compose nodes need gesture
             // Free-tier / premium upsell: always pick "stay free" over "upgrade"
             "Continue with ads", "Continue Listening",
             "Keep listening for free", "I'll keep listening for free",
@@ -87,8 +91,12 @@ public class OverlayGuard {
         };
         for (String text : textPatterns) {
             AccessibilityNodeInfo node = findByText(svc, text);
+            if (node == null) node = findByTextAllWindows(svc, text);
             if (node != null) {
-                boolean clicked = clickUp(node);
+                // Try gesture first — required for Compose nodes where clickable=false
+                // on the node AND all ancestors (clickUp() silently fails on these).
+                boolean clicked = tapNodeGesture(svc, node);
+                if (!clicked) clicked = clickUp(node);
                 node.recycle();
                 if (clicked) {
                     Log.i(TAG, "[OVERLAY] Auto-dismissed via text='" + text + "'");
@@ -137,37 +145,26 @@ public class OverlayGuard {
             }
         }
 
-        // ── 5. Spotify promotional / recommendation cards ─────────────────────
-        // "Try a playlist", "MADE FOR YOU", "New releases", etc.
-        // These cards have a "Dismiss" text node rendered in Compose — clickUp on
-        // the text node often fails because the click is absorbed by a parent container.
-        // Pressing Back is the fastest, most reliable way to close them.
-        String[] promoTexts = {
-            "Try a playlist", "Try a Playlist",
-            "MADE FOR YOU", "Made for you",
-            "CHECK IT OUT",
-            "New releases for you",
-            "Try this playlist",
+        // ── 5. Spotify promotional recommendation CARDS (modal overlays only) ──
+        // IMPORTANT: do NOT match home-feed section headers like "Made for you" or
+        // "New releases for you" — those are normal UI, not dismissible overlays.
+        // Only act when we see a promo-card title AND a visible Dismiss control.
+        String[] promoCardTexts = {
+            "Try a playlist", "Try a Playlist", "Try this playlist",
         };
-        for (String t : promoTexts) {
+        for (String t : promoCardTexts) {
             AccessibilityNodeInfo n = findByText(svc, t);
             if (n == null) n = findByDesc(svc, t);
-            if (n != null) {
-                n.recycle();
-                // First try tapping the Dismiss text directly
-                AccessibilityNodeInfo dismiss = findByText(svc, "Dismiss");
-                if (dismiss == null) dismiss = findByText(svc, "DISMISS");
-                if (dismiss != null) {
-                    boolean clicked = clickUp(dismiss);
-                    dismiss.recycle();
-                    if (clicked) {
-                        Log.i(TAG, "[OVERLAY] Promo card dismissed via Dismiss tap");
-                        return true;
-                    }
-                }
-                // Fallback: Back always closes these cards
-                svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK);
-                Log.i(TAG, "[OVERLAY] Promo card dismissed via Back (text='" + t + "')");
+            if (n == null) continue;
+            n.recycle();
+            AccessibilityNodeInfo dismiss = findByText(svc, "Dismiss");
+            if (dismiss == null) dismiss = findByText(svc, "DISMISS");
+            if (dismiss == null) continue;
+            boolean clicked = tapNodeGesture(svc, dismiss);
+            if (!clicked) clicked = clickUp(dismiss);
+            dismiss.recycle();
+            if (clicked) {
+                Log.i(TAG, "[OVERLAY] Promo card dismissed via Dismiss tap (text='" + t + "')");
                 return true;
             }
         }
@@ -194,17 +191,26 @@ public class OverlayGuard {
             "New to Premium only",  // fine print on trial offers
             "New to Spotify Premium", // alternate fine print
             "ad-free music",        // body text of premium upsell
+            "Ends soon",            // "Ends soon: 3 months of Premium for Rs 0" timer banner
+            "GET 3 MONTHS FOR",     // all-caps CTA on the Rs 0 promo card
+            "GET 3 MONTHS",         // shorter variant
+            "months of Premium for Rs", // regional price variant "3 months of Premium for Rs 0"
+            "months of Spotify Premium", // "3 months of Spotify Premium"
+            "Subscribe now",        // final-CTA variant on upsell
         };
         for (String marker : upsellMarkers) {
             AccessibilityNodeInfo markerNode = findByText(svc, marker);
             if (markerNode == null) markerNode = findByTextAllWindows(svc, marker);
             if (markerNode != null) {
                 markerNode.recycle();
-                // Step 1: find the "dismiss" text node and use direct ACTION_CLICK
-                // (bypasses isClickable() gate — required for Compose rendered nodes)
+                // Step 1: find the "dismiss" text node — try local tree first, then
+                // all windows (catches nodes in Compose layers not in the main tree).
                 AccessibilityNodeInfo dismissNode = findByText(svc, "dismiss");
                 if (dismissNode == null) dismissNode = findByText(svc, "Dismiss");
                 if (dismissNode == null) dismissNode = findByText(svc, "DISMISS");
+                if (dismissNode == null) dismissNode = findByTextAllWindows(svc, "dismiss");
+                if (dismissNode == null) dismissNode = findByTextAllWindows(svc, "Dismiss");
+                if (dismissNode == null) dismissNode = findByTextAllWindows(svc, "DISMISS");
                 if (dismissNode != null) {
                     // UIAutoDev-confirmed (2026-06-05): the "dismiss" node and ALL its
                     // Compose ancestors have isClickable=false. performAction(ACTION_CLICK)
@@ -229,16 +235,36 @@ public class OverlayGuard {
             }
         }
 
-        // ── 6b. Generic "Get Premium" modal (older / other upsell variants) ───
-        AccessibilityNodeInfo premium = findByText(svc, "Get Premium");
-        if (premium == null) premium = findByDesc(svc, "Get Premium");
-        if (premium == null) premium = findByText(svc, "Try Premium");
-        if (premium == null) premium = findByText(svc, "Start your Premium");
-        if (premium != null) {
-            premium.recycle();
-            svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK);
-            Log.i(TAG, "[OVERLAY] Generic premium upsell modal → pressed Back");
-            return true;
+        // ── 7b. Concert / notification opt-in banner (slide-in only) ─────────────
+        //
+        // ONLY match the toggle label — NOT "playing near you" / "Find out when artists"
+        // which also appear in normal home-feed concert recommendation cards.
+        // Pressing Back on those false positives was blocking all automation.
+        String[] concertBannerMarkers = {
+            "Get concert notifications",
+        };
+        for (String marker : concertBannerMarkers) {
+            AccessibilityNodeInfo markerNode = findByText(svc, marker);
+            if (markerNode != null) {
+                markerNode.recycle();
+                // Attempt 1: id/close_button on the banner — Compose-rendered, must use gesture
+                AccessibilityNodeInfo closeBtn = findById(svc, SPOTIFY_PKG + ":id/close_button");
+                if (closeBtn == null) closeBtn = findByDesc(svc, "Close");
+                if (closeBtn == null) closeBtn = findByDesc(svc, "close");
+                if (closeBtn != null) {
+                    boolean tapped = tapNodeGesture(svc, closeBtn);
+                    if (!tapped) tapped = closeBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                    closeBtn.recycle();
+                    if (tapped) {
+                        Log.i(TAG, "[OVERLAY] Concert notification banner closed via gesture (marker='" + marker + "')");
+                        return true;
+                    }
+                }
+                // Fallback: Back always closes slide-in banners without enabling notifications
+                svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK);
+                Log.i(TAG, "[OVERLAY] Concert notification banner dismissed via Back (marker='" + marker + "')");
+                return true;
+            }
         }
 
         // ── 7. Android system permission dialogs ─────────────────────────────
@@ -307,33 +333,21 @@ public class OverlayGuard {
         if (skipAdDesc == null) skipAdDesc = findByDesc(svc, "Skip Ad");
         if (skipAdDesc != null) { skipAdDesc.recycle(); return true; }
 
-        // Spotify promotional / recommendation cards (block nav the same way upsells do)
-        String[] promoBlockTexts = {
-            "Try a playlist", "Try a Playlist",
-            "MADE FOR YOU",
-            "CHECK IT OUT",
-            "New releases for you",
-            "Try this playlist",
-        };
-        for (String t : promoBlockTexts) {
-            AccessibilityNodeInfo n = findByText(svc, t);
-            if (n != null) { n.recycle(); return true; }
-        }
-
-        // Premium upsell / free-tier interstitial full-screen modal
+        // Full-screen upsell ONLY — fine-print strings that never appear on the home feed.
+        // Do NOT include "Get Premium", "Subscribe now", "ad-free music", "playing near you"
+        // etc. — those false-positive on normal Spotify screens and stall every command.
         String[] upsellTexts = {
-            "Get Premium",
             "Start your free trial",
             "Start free trial",
             "Continue with ads",
             "Keep listening for free",
-            "Upgrade to Premium",
-            // Regional / trial offer variants ("3 months of Premium for Rs 0 are waiting.")
             "months of Premium",
             "months free",
             "Individual plan only",
             "New to Premium only",
-            "ad-free music",
+            "GET 3 MONTHS",
+            "months of Premium for Rs",
+            "months of Spotify Premium",
         };
         for (String t : upsellTexts) {
             AccessibilityNodeInfo n = findByText(svc, t);
@@ -345,7 +359,6 @@ public class OverlayGuard {
             SPOTIFY_PKG + ":id/upsell_fullscreen",
             SPOTIFY_PKG + ":id/interstitial_container",
             SPOTIFY_PKG + ":id/free_tier_interstitial",
-            SPOTIFY_PKG + ":id/upgrade_banner",
         };
         for (String id : blockingIds) {
             AccessibilityNodeInfo n = findById(svc, id);
@@ -451,12 +464,15 @@ public class OverlayGuard {
         float tapX = bounds.centerX();
         float tapY = bounds.centerY();
 
+        // IMPORTANT: path must have at least one lineTo — a path with only moveTo() is
+        // a zero-length path that Samsung's gesture engine silently drops.
         Path path = new Path();
         path.moveTo(tapX, tapY);
+        path.lineTo(tapX, tapY);  // zero-length line forces a valid, non-empty path
 
         try {
             GestureDescription gesture = new GestureDescription.Builder()
-                    .addStroke(new GestureDescription.StrokeDescription(path, 0, 120))
+                    .addStroke(new GestureDescription.StrokeDescription(path, 0, 150))
                     .build();
             boolean dispatched = svc.dispatchGesture(gesture, null, null);
             Log.d(TAG, "[OVERLAY] tapNodeGesture: dispatched=" + dispatched
